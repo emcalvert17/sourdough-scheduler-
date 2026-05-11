@@ -1,39 +1,47 @@
 import { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import BottomNav from './components/BottomNav.jsx';
-import Onboarding from './components/Onboarding.jsx';
+import AuthScreen from './screens/AuthScreen.jsx';
 import BakesScreen from './screens/BakesScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import CalendarScreen from './screens/CalendarScreen.jsx';
 import GalleryScreen from './screens/GalleryScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
-import { getProfile } from './utils/socialStorage.js';
 import './App.css';
 
-export default function App() {
-  const [activeTab,   setActiveTab]   = useState('home');
-  const [onboarded,   setOnboarded]   = useState(() => !!getProfile());
+function AppShell() {
+  const { user, loading } = useAuth();
+  const [activeTab, setActiveTab] = useState('home');
 
-  if (!onboarded) {
+  if (loading) {
     return (
-      <div className="app">
-        <Onboarding onComplete={() => setOnboarded(true)} />
+      <div className="app-loading">
+        <div className="app-loading-logo">StarterSync</div>
+        <div className="app-loading-spinner" />
       </div>
     );
   }
 
+  if (!user) return <AuthScreen />;
+
   return (
     <div className="app">
       <div className="screen-container">
-        {/* BakesScreen stays mounted to preserve navigation state */}
         <BakesScreen active={activeTab === 'bakes'} />
-
         {activeTab === 'home'     && <HomeScreen onTabChange={setActiveTab} />}
         {activeTab === 'calendar' && <CalendarScreen />}
         {activeTab === 'gallery'  && <GalleryScreen />}
         {activeTab === 'profile'  && <ProfileScreen />}
       </div>
-
       <BottomNav active={activeTab} onChange={setActiveTab} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
