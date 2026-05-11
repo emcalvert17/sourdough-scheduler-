@@ -29,7 +29,7 @@ function UserCard({ profile, isFollowing, onToggle, disabled, onViewProfile }) {
       <div className="friend-card-info">
         <div className="friend-card-name">{profile.display_name || profile.username}</div>
         <div className="friend-card-sub">@{profile.username}{profile.location ? ` · ${profile.location}` : ''}</div>
-        {profile.starter_name && <div className="friend-card-bio">Starter: {profile.starter_name}</div>}
+        {profile.starter_name && <div className="friend-card-bio">Starter: <span className="starter-accent">{profile.starter_name}</span></div>}
         {profile.bio && <div className="friend-card-bio">{profile.bio}</div>}
       </div>
       <button className={`btn btn-sm ${isFollowing ? 'btn-ghost' : 'btn-secondary'}`}
@@ -353,7 +353,7 @@ export default function ProfileScreen({ onTabChange }) {
           <div className="profile-name">{profile?.display_name || 'Unnamed Baker'}</div>
           <div className="profile-handle">@{profile?.username}</div>
           {profile?.location     && <div className="profile-location">{profile.location}</div>}
-          {profile?.starter_name && <div className="profile-location">Starter: <strong>{profile.starter_name}</strong></div>}
+          {profile?.starter_name && <div className="profile-location">Starter: <span className="starter-accent">{profile.starter_name}</span></div>}
           {profile?.bio          && <div className="profile-bio">{profile.bio}</div>}
         </div>
       </div>
@@ -363,7 +363,17 @@ export default function ProfileScreen({ onTabChange }) {
         <StatBlock label="Following"  value={followingCount} onClick={() => setFollowPanel('following')} />
         <StatBlock label="Bakes"      value={bakeLog.length} onClick={() => setShowBakeLog(true)} />
         <StatBlock label="Recipes"    value={recipes.length} onClick={() => onTabChange?.('bakes')} />
-        <StatBlock label="Streak"     value={streak} onClick={() => setShowBakeLog(true)} />
+        <div className={`stat-block stat-block--clickable`} onClick={() => setShowBakeLog(true)}>
+          <div className="stat-value">{streak}</div>
+          {streak > 0 && (
+            <div className="streak-scores">
+              {Array.from({ length: Math.min(streak, 7) }).map((_, i) => (
+                <div key={i} className="streak-score-mark" />
+              ))}
+            </div>
+          )}
+          <div className="stat-label">Streak</div>
+        </div>
       </div>
 
       <div className="profile-section-tabs">
