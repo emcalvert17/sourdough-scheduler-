@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { compressImage } from '../utils/photoStorage.js';
+import { generateId } from '../utils/uuid.js';
+import UserProfileModal from '../components/UserProfileModal.jsx';
 
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -11,22 +14,27 @@ function timeAgo(iso) {
   return `${d}d ago`;
 }
 
-function Avatar({ displayName, avatarUrl, size = 38 }) {
+function Avatar({ displayName, avatarUrl, size = 38, onClick }) {
   const initials = (displayName || '?').slice(0, 2).toUpperCase();
+  const style = { width: size, height: size, fontSize: size * 0.38, cursor: onClick ? 'pointer' : 'default' };
   if (avatarUrl) {
-    return <img className="avatar" src={avatarUrl} alt={displayName} style={{ width: size, height: size, objectFit: 'cover' }} />;
+    return <img className="avatar" src={avatarUrl} alt={displayName} style={{ ...style, objectFit: 'cover' }} onClick={onClick} />;
   }
-  return (
-    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.38 }}>
-      {initials}
-    </div>
-  );
+  return <div className="avatar" style={style} onClick={onClick}>{initials}</div>;
 }
 
 function HeartIcon({ filled }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
@@ -39,17 +47,49 @@ function ScheduleIcon() {
   );
 }
 
-function CreatePostModal({ onClose, onPost }) {
-  const [type,       setType]       = useState('bake');
-  const [content,    setContent]    = useState('');
-  const [recipeName, setRecipeName] = useState('');
-  const [loading,    setLoading]    = useState(false);
+function CommentRow({ comment }) {
+  const p = comment.profiles;
+  return (
+    <div className="comment-row">
+      <Avatar displayName={p?.display_name} avatarUrl={p?.avatar_url} size={28} />
+      <div className="comment-body">
+        <span className="comment-author">{p?.display_name || 'Baker'}</span>
+        <span className="comment-text"> {comment.content}</span>
+        <div className="comment-time">{timeAgo(comment.created_at)}</div>
+      </div>
+    </div>
+  );
+}
+
+function CreatePostModal({ onClose, onPost, currentProfile }) {
+  const [type,         setType]         = useState('bake');
+  const [content,      setContent]      = useState('');
+  const [recipeName,   setRecipeName]   = useState('');
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imgLoading,   setImgLoading]   = useState(false);
+  const [submitting,   setSubmitting]   = useState(false);
+  const fileRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImgLoading(true);
+    try {
+      const compressed = await compressImage(file);
+      setImagePreview(compressed);
+    } catch {
+      alert('Could not process image.');
+    } finally {
+      setImgLoading(false);
+      e.target.value = '';
+    }
+  };
 
   const handleSubmit = async () => {
     if (!content.trim()) return;
-    setLoading(true);
-    await onPost({ type, content: content.trim(), recipe_name: recipeName.trim() || null });
-    setLoading(false);
+    setSubmitting(true);
+    await onPost({ type, content: content.trim(), recipe_name: recipeName.trim() || null, imagePreview });
+    setSubmitting(false);
     onClose();
   };
 
@@ -57,10 +97,12 @@ function CreatePostModal({ onClose, onPost }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h3>Share with the community</h3>
+
         <div className="post-type-toggle">
           <button className={`post-type-btn${type === 'bake' ? ' active' : ''}`} onClick={() => setType('bake')}>🍞 Bake</button>
           <button className={`post-type-btn${type === 'tip'  ? ' active' : ''}`} onClick={() => setType('tip')}>💡 Tip</button>
         </div>
+
         {type === 'bake' && (
           <div className="form-group">
             <label className="form-label">Recipe name <span className="form-optional">(optional)</span></label>
@@ -68,22 +110,34 @@ function CreatePostModal({ onClose, onPost }) {
               value={recipeName} onChange={e => setRecipeName(e.target.value)} />
           </div>
         )}
-        <div className="form-group" style={{ marginBottom: 20 }}>
+
+        <div className="form-group">
           <label className="form-label">{type === 'bake' ? 'How did the bake go?' : 'Share your tip'}</label>
           <textarea
             className="form-input form-textarea"
-            placeholder={type === 'bake'
-              ? 'Oven spring, crumb, crust — tell us everything!'
-              : 'What sourdough wisdom would you pass on?'}
+            placeholder={type === 'bake' ? 'Oven spring, crumb, crust — tell us everything!' : 'What sourdough wisdom would you pass on?'}
             value={content}
             onChange={e => setContent(e.target.value)}
             rows={4}
           />
         </div>
-        <div className="modal-actions">
+
+        {imagePreview ? (
+          <div className="post-image-preview">
+            <img src={imagePreview} alt="Preview" />
+            <button className="remove-image-btn" onClick={() => setImagePreview(null)}>✕ Remove photo</button>
+          </div>
+        ) : (
+          <button className="btn btn-ghost add-photo-btn" onClick={() => fileRef.current?.click()} disabled={imgLoading}>
+            {imgLoading ? 'Processing…' : '📷 Add Photo'}
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+
+        <div className="modal-actions" style={{ marginTop: 16 }}>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading || !content.trim()}>
-            {loading ? 'Posting…' : 'Post'}
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !content.trim()}>
+            {submitting ? 'Posting…' : 'Post'}
           </button>
         </div>
       </div>
@@ -91,11 +145,21 @@ function CreatePostModal({ onClose, onPost }) {
   );
 }
 
-function PostCard({ post, currentUserId, onTabChange }) {
-  const profile = post.profiles;
-  const [liked,     setLiked]     = useState(() => post.user_liked);
-  const [likeCount, setLikeCount] = useState(post.likes_count ?? 0);
-  const [liking,    setLiking]    = useState(false);
+function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
+  const postProfile = post.profiles;
+
+  const [liked,      setLiked]      = useState(() => post.user_liked);
+  const [likeCount,  setLikeCount]  = useState(post.likes_count ?? 0);
+  const [liking,     setLiking]     = useState(false);
+
+  const [showComments,   setShowComments]   = useState(false);
+  const [comments,       setComments]       = useState([]);
+  const [commentCount,   setCommentCount]   = useState(post.comments_count ?? 0);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentInput,   setCommentInput]   = useState('');
+  const [sending,        setSending]        = useState(false);
+
+  const [viewingProfile, setViewingProfile] = useState(null);
 
   const handleLike = async () => {
     if (liking) return;
@@ -103,7 +167,6 @@ function PostCard({ post, currentUserId, onTabChange }) {
     const nowLiked = !liked;
     setLiked(nowLiked);
     setLikeCount(c => nowLiked ? c + 1 : c - 1);
-
     if (nowLiked) {
       await supabase.from('likes').insert({ user_id: currentUserId, post_id: post.id });
     } else {
@@ -112,13 +175,45 @@ function PostCard({ post, currentUserId, onTabChange }) {
     setLiking(false);
   };
 
+  const toggleComments = async () => {
+    if (!showComments && !commentsLoaded) {
+      const { data } = await supabase
+        .from('comments')
+        .select('*, profiles(id, username, display_name, avatar_url)')
+        .eq('post_id', post.id)
+        .order('created_at', { ascending: true });
+      setComments(data || []);
+      setCommentsLoaded(true);
+    }
+    setShowComments(s => !s);
+  };
+
+  const submitComment = async () => {
+    if (!commentInput.trim() || sending) return;
+    const content = commentInput.trim();
+    setCommentInput('');
+    setSending(true);
+    const { data } = await supabase
+      .from('comments')
+      .insert({ post_id: post.id, user_id: currentUserId, content })
+      .select('*, profiles(id, username, display_name, avatar_url)')
+      .single();
+    if (data) {
+      setComments(prev => [...prev, data]);
+      setCommentCount(c => c + 1);
+    }
+    setSending(false);
+  };
+
   return (
     <div className={`feed-card${post.type === 'tip' ? ' feed-card--tip' : ''}`}>
       <div className="feed-card-header">
-        <Avatar displayName={profile?.display_name} avatarUrl={profile?.avatar_url} />
-        <div className="feed-card-meta">
-          <span className="feed-card-name">{profile?.display_name || 'Baker'}</span>
-          <span className="feed-card-sub">@{profile?.username} · {timeAgo(post.created_at)}</span>
+        <div className="feed-header-clickable" onClick={() => setViewingProfile(postProfile?.id)}>
+          <Avatar displayName={postProfile?.display_name} avatarUrl={postProfile?.avatar_url} />
+          <div className="feed-card-meta">
+            <span className="feed-card-name">{postProfile?.display_name || 'Baker'}</span>
+            <span className="feed-card-sub">@{postProfile?.username} · {timeAgo(post.created_at)}</span>
+          </div>
         </div>
         <span className={`feed-tag feed-tag--${post.type}`}>
           {post.type === 'bake' ? 'Bake' : 'Tip'}
@@ -139,7 +234,11 @@ function PostCard({ post, currentUserId, onTabChange }) {
       <div className="feed-card-actions">
         <button className={`feed-action-btn${liked ? ' active' : ''}`} onClick={handleLike}>
           <HeartIcon filled={liked} />
-          <span>{likeCount}</span>
+          <span>{likeCount > 0 ? likeCount : 'Like'}</span>
+        </button>
+        <button className={`feed-action-btn${showComments ? ' active' : ''}`} onClick={toggleComments}>
+          <CommentIcon />
+          <span>{commentCount > 0 ? commentCount : 'Comment'}</span>
         </button>
         {post.type === 'bake' && (
           <button className="feed-action-btn" onClick={() => onTabChange('bakes')}>
@@ -148,15 +247,49 @@ function PostCard({ post, currentUserId, onTabChange }) {
           </button>
         )}
       </div>
+
+      {showComments && (
+        <div className="comments-section">
+          {commentsLoaded && comments.length === 0 && (
+            <div className="comments-empty">No comments yet — be the first!</div>
+          )}
+          {comments.map(c => <CommentRow key={c.id} comment={c} />)}
+          <div className="comment-input-row">
+            <Avatar displayName={currentProfile?.display_name} avatarUrl={currentProfile?.avatar_url} size={28} />
+            <input
+              className="comment-input"
+              placeholder="Add a comment…"
+              value={commentInput}
+              onChange={e => setCommentInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment()}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={submitComment}
+              disabled={!commentInput.trim() || sending}
+            >
+              {sending ? '…' : 'Post'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {viewingProfile && viewingProfile !== currentUserId && (
+        <UserProfileModal
+          userId={viewingProfile}
+          currentUserId={currentUserId}
+          onClose={() => setViewingProfile(null)}
+        />
+      )}
     </div>
   );
 }
 
 export default function HomeScreen({ onTabChange }) {
-  const { user } = useAuth();
-  const [posts,       setPosts]       = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [showCreate,  setShowCreate]  = useState(false);
+  const { user, profile } = useAuth();
+  const [posts,      setPosts]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
@@ -168,7 +301,6 @@ export default function HomeScreen({ onTabChange }) {
 
     if (!postsData) { setLoading(false); return; }
 
-    // find which posts the current user has liked
     const { data: myLikes } = await supabase
       .from('likes')
       .select('post_id')
@@ -181,15 +313,36 @@ export default function HomeScreen({ onTabChange }) {
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
-  const handlePost = async ({ type, content, recipe_name }) => {
+  const handlePost = async ({ type, content, recipe_name, imagePreview }) => {
+    const postId = generateId();
+    let image_url = null;
+
+    if (imagePreview) {
+      try {
+        const res  = await fetch(imagePreview);
+        const blob = await res.blob();
+        const { error: upErr } = await supabase.storage
+          .from('post-images')
+          .upload(`posts/${postId}.jpg`, blob, { contentType: 'image/jpeg' });
+        if (!upErr) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('post-images')
+            .getPublicUrl(`posts/${postId}.jpg`);
+          image_url = publicUrl;
+        }
+      } catch (e) {
+        console.error('Image upload failed:', e);
+      }
+    }
+
     const { data, error } = await supabase
       .from('posts')
-      .insert({ user_id: user.id, type, content, recipe_name })
+      .insert({ id: postId, user_id: user.id, type, content, recipe_name, image_url })
       .select('*, profiles(id, username, display_name, avatar_url)')
       .single();
 
     if (!error && data) {
-      setPosts(prev => [{ ...data, user_liked: false }, ...prev]);
+      setPosts(prev => [{ ...data, user_liked: false, comments_count: 0 }, ...prev]);
     }
   };
 
@@ -202,7 +355,7 @@ export default function HomeScreen({ onTabChange }) {
 
       {loading ? (
         <div className="feed-loading">
-          {[1,2,3].map(i => <div key={i} className="feed-skeleton" />)}
+          {[1, 2, 3].map(i => <div key={i} className="feed-skeleton" />)}
         </div>
       ) : posts.length === 0 ? (
         <div className="feed-empty">
@@ -217,14 +370,23 @@ export default function HomeScreen({ onTabChange }) {
         <div className="feed">
           {posts.map((post, i) => (
             <div key={post.id} style={{ '--i': i }} className="feed-item-enter">
-              <PostCard post={post} currentUserId={user.id} onTabChange={onTabChange} />
+              <PostCard
+                post={post}
+                currentUserId={user.id}
+                currentProfile={profile}
+                onTabChange={onTabChange}
+              />
             </div>
           ))}
         </div>
       )}
 
       {showCreate && (
-        <CreatePostModal onClose={() => setShowCreate(false)} onPost={handlePost} />
+        <CreatePostModal
+          onClose={() => setShowCreate(false)}
+          onPost={handlePost}
+          currentProfile={profile}
+        />
       )}
     </div>
   );
