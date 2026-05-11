@@ -154,6 +154,94 @@ function CreatePostModal({ onClose, onPost }) {
   );
 }
 
+function FeedStarRating({ value, onRate }) {
+  const [hover, setHover] = useState(null);
+  const display = hover ?? value ?? 0;
+  return (
+    <div className="star-rating">
+      {[1,2,3,4,5].map(n => (
+        <span key={n} className={`star${display >= n ? ' star--filled' : ''}`}
+          onClick={() => onRate(n)}
+          onMouseEnter={() => setHover(n)}
+          onMouseLeave={() => setHover(null)}>★</span>
+      ))}
+      {value > 0 && <span className="star-label">Your rating</span>}
+    </div>
+  );
+}
+
+function StarsDisplay({ avg, count }) {
+  const filled = Math.round(avg);
+  return (
+    <div className="stars-display">
+      {[1,2,3,4,5].map(n => (
+        <span key={n} className={`star${filled >= n ? ' star--filled' : ''}`}>★</span>
+      ))}
+      <span className="star-label">{avg.toFixed(1)} ({count})</span>
+    </div>
+  );
+}
+
+function RankingsView() {
+  const [rankings, setRankings] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: posts } = await supabase
+        .from('posts').select('id, recipe_name').not('recipe_name', 'is', null);
+      if (!posts?.length) { setLoading(false); return; }
+
+      const postIds = posts.map(p => p.id);
+      const { data: ratingRows } = await supabase
+        .from('ratings').select('post_id, score').in('post_id', postIds);
+
+      const recipeMap = {};
+      posts.forEach(p => { recipeMap[p.recipe_name] = recipeMap[p.recipe_name] || []; });
+      (ratingRows || []).forEach(r => {
+        const post = posts.find(p => p.id === r.post_id);
+        if (post) recipeMap[post.recipe_name].push(r.score);
+      });
+
+      const ranked = Object.entries(recipeMap)
+        .filter(([, scores]) => scores.length > 0)
+        .map(([name, scores]) => ({
+          name,
+          avg: scores.reduce((a, b) => a + b, 0) / scores.length,
+          count: scores.length,
+        }))
+        .sort((a, b) => b.avg - a.avg || b.count - a.count);
+
+      setRankings(ranked);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  if (loading) return <div className="feed-loading">{[1,2,3].map(i => <div key={i} className="feed-skeleton" />)}</div>;
+
+  if (rankings.length === 0) return (
+    <div className="feed-empty">
+      <div className="feed-empty-title">No community ratings yet</div>
+      <div className="feed-empty-sub">Rate recipes in the feed to build the leaderboard</div>
+    </div>
+  );
+
+  return (
+    <div className="rankings-list">
+      {rankings.map((r, i) => (
+        <div key={r.name} className="ranking-item">
+          <div className="ranking-number">{i + 1}</div>
+          <div className="ranking-info">
+            <div className="ranking-name">{r.name}</div>
+            <StarsDisplay avg={r.avg} count={r.count} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted }) {
   const postProfile = post.profiles;
   const isOwn = postProfile?.id === currentUserId;
@@ -170,6 +258,8 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted 
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [commentInput,   setCommentInput]   = useState('');
   const [sending,        setSending]        = useState(false);
+
+  const [userRating,     setUserRating]     = useState(() => post.user_rating ?? null);
 
   const [showMenu,       setShowMenu]       = useState(false);
   const [deleting,       setDeleting]       = useState(false);
@@ -212,6 +302,19 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted 
     setDeleting(true);
     await supabase.from('posts').delete().eq('id', post.id);
     onDeleted(post.id);
+  };
+
+  const handleRate = async (score) => {
+    const newScore = score === userRating ? null : score;
+    setUserRating(newScore);
+    if (newScore) {
+      await supabase.from('ratings').upsert(
+        { post_id: post.id, user_id: currentUserId, score: newScore },
+        { onConflict: 'post_id,user_id' }
+      );
+    } else {
+      await supabase.from('ratings').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+    }
   };
 
   const toggleComments = async () => {
@@ -283,7 +386,12 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted 
       )}
 
       <div className="feed-card-body">
-        {post.recipe_name && <div className="feed-recipe-label">{post.recipe_name}</div>}
+        {post.recipe_name && (
+          <>
+            <div className="feed-recipe-label">{post.recipe_name}</div>
+            <FeedStarRating value={userRating} onRate={handleRate} />
+          </>
+        )}
         <p className="feed-caption">{post.content}</p>
       </div>
 
@@ -367,25 +475,31 @@ export default function HomeScreen({ onTabChange }) {
     if (!postsData || postsData.length === 0) { setPosts([]); setLoading(false); return; }
 
     const userIds = [...new Set(postsData.map(p => p.user_id))];
-    const [{ data: profiles }, { data: myLikes }, { data: mySaves }] = await Promise.all([
+    const recipePostIds = postsData.filter(p => p.recipe_name).map(p => p.id);
+    const [{ data: profiles }, { data: myLikes }, { data: mySaves }, { data: myRatings }] = await Promise.all([
       supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', userIds),
       supabase.from('likes').select('post_id').eq('user_id', user.id),
       supabase.from('saves').select('post_id').eq('user_id', user.id),
+      recipePostIds.length > 0
+        ? supabase.from('ratings').select('post_id, score').eq('user_id', user.id).in('post_id', recipePostIds)
+        : Promise.resolve({ data: [] }),
     ]);
 
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
     const likedSet = new Set((myLikes || []).map(l => l.post_id));
     const savedSet = new Set((mySaves || []).map(s => s.post_id));
+    const ratingMap = Object.fromEntries((myRatings || []).map(r => [r.post_id, r.score]));
     setPosts(postsData.map(p => ({
       ...p,
       profiles: profileMap[p.user_id] || null,
       user_liked: likedSet.has(p.id),
       user_saved: savedSet.has(p.id),
+      user_rating: ratingMap[p.id] ?? null,
     })));
     setLoading(false);
   }, [user.id]);
 
-  useEffect(() => { loadFeed(feedMode); }, [feedMode, loadFeed]);
+  useEffect(() => { if (feedMode !== 'rankings') loadFeed(feedMode); }, [feedMode, loadFeed]);
   useEffect(() => { loadUnreadCount(); }, [loadUnreadCount]);
 
   const handlePost = async ({ type, content, recipe_name, imagePreview }) => {
@@ -434,9 +548,12 @@ export default function HomeScreen({ onTabChange }) {
       <div className="feed-mode-toggle">
         <button className={`feed-mode-btn${feedMode === 'discover'   ? ' active' : ''}`} onClick={() => setFeedMode('discover')}>Discover</button>
         <button className={`feed-mode-btn${feedMode === 'following'  ? ' active' : ''}`} onClick={() => setFeedMode('following')}>Following</button>
+        <button className={`feed-mode-btn${feedMode === 'rankings'   ? ' active' : ''}`} onClick={() => setFeedMode('rankings')}>Rankings</button>
       </div>
 
-      {loading ? (
+      {feedMode === 'rankings' ? (
+        <RankingsView />
+      ) : loading ? (
         <div className="feed-loading">{[1,2,3].map(i => <div key={i} className="feed-skeleton" />)}</div>
       ) : emptyFollowing ? (
         <div className="feed-empty">

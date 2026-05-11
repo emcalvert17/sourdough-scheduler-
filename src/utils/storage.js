@@ -19,3 +19,12 @@ export function saveRecipe(recipe) {
 export function deleteRecipe(id) {
   localStorage.setItem(KEY, JSON.stringify(getRecipes().filter(r => r.id !== id)));
 }
+
+export function updateRecipeRating(id, rating) {
+  const recipes = getRecipes();
+  const idx = recipes.findIndex(r => r.id === id);
+  if (idx >= 0) {
+    recipes[idx] = { ...recipes[idx], rating };
+    localStorage.setItem(KEY, JSON.stringify(recipes));
+  }
+}

@@ -1,6 +1,28 @@
 import { useState } from 'react';
 
-export default function RecipeList({ recipes, onNew, onEdit, onDelete, onUse, onShare }) {
+function StarRating({ value, onRate, readonly = false }) {
+  const [hover, setHover] = useState(null);
+  const display = hover ?? value ?? 0;
+  return (
+    <div className="star-rating">
+      {[1,2,3,4,5].map(n => (
+        <span
+          key={n}
+          className={`star${display >= n ? ' star--filled' : ''}`}
+          onClick={readonly ? undefined : () => onRate(n === value ? 0 : n)}
+          onMouseEnter={readonly ? undefined : () => setHover(n)}
+          onMouseLeave={readonly ? undefined : () => setHover(null)}
+          style={{ cursor: readonly ? 'default' : 'pointer' }}
+        >★</span>
+      ))}
+      {!readonly && value > 0 && (
+        <span className="star-clear" onClick={() => onRate(0)}>✕</span>
+      )}
+    </div>
+  );
+}
+
+export default function RecipeList({ recipes, onNew, onEdit, onDelete, onUse, onShare, onRate }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const handleDelete = (id) => {
@@ -42,6 +64,9 @@ export default function RecipeList({ recipes, onNew, onEdit, onDelete, onUse, on
                 {recipe.stretchAndFolds?.count > 0 &&
                   ` · ${recipe.stretchAndFolds.count}x stretch & fold`}
               </div>
+              {onRate && (
+                <StarRating value={recipe.rating ?? 0} onRate={rating => onRate(recipe.id, rating)} />
+              )}
             </div>
             <div className="recipe-card-actions">
               {confirmDelete === recipe.id ? (

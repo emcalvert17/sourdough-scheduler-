@@ -2415,3 +2415,92 @@ body::before {
 
 /* Bottom padding for nav height increase */
 .app { padding-bottom: 92px; }
+
+/* ── Star ratings ─────────────────────────────────────────── */
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 6px 0 4px;
+}
+.star {
+  font-size: 18px;
+  color: var(--border);
+  transition: color 0.1s;
+  user-select: none;
+  line-height: 1;
+}
+.star--filled { color: var(--primary); }
+.star-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+  font-weight: 500;
+}
+.star-clear {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.stars-display {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.stars-display .star { font-size: 14px; cursor: default; }
+
+/* Recipe list star rating */
+.recipe-card .star-rating { margin: 4px 0 0; }
+.recipe-card .star { font-size: 16px; }
+
+/* ── Community Rankings ───────────────────────────────────── */
+.rankings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 16px;
+  margin-top: 8px;
+}
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ranking-item:last-child { border-bottom: none; }
+.ranking-number {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary);
+  opacity: 0.35;
+  min-width: 36px;
+  text-align: center;
+  line-height: 1;
+}
+.ranking-item:nth-child(1) .ranking-number { opacity: 1; font-size: 2.4rem; }
+.ranking-item:nth-child(2) .ranking-number { opacity: 0.7; }
+.ranking-item:nth-child(3) .ranking-number { opacity: 0.55; }
+.ranking-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.ranking-name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.ranking-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+}

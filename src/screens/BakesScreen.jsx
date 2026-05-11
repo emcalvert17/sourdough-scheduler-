@@ -6,7 +6,7 @@ import RecipeList from '../components/RecipeList.jsx';
 import RecipeBuilder from '../components/RecipeBuilder.jsx';
 import ScheduleSetup from '../components/ScheduleSetup.jsx';
 import Timeline from '../components/Timeline.jsx';
-import { getRecipes, saveRecipe, deleteRecipe } from '../utils/storage.js';
+import { getRecipes, saveRecipe, deleteRecipe, updateRecipeRating } from '../utils/storage.js';
 import { calculateSchedule } from '../utils/timeCalculator.js';
 import { addBakeEntry } from '../utils/bakeLog.js';
 
@@ -107,6 +107,7 @@ export default function BakesScreen({ active }) {
               onDelete={id => { deleteRecipe(id); refreshRecipes(); }}
               onUse={r => { setSchedulingRecipe(r); setView('schedule'); }}
               onShare={r => setSharingRecipe(r)}
+              onRate={(id, rating) => { updateRecipeRating(id, rating); refreshRecipes(); }}
             />
           </div>
         )}
