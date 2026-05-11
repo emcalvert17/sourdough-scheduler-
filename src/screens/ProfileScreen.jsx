@@ -347,15 +347,13 @@ export default function ProfileScreen({ onTabChange }) {
       </div>
 
       <div className="profile-hero">
-        <Avatar displayName={profile?.display_name} avatarUrl={profile?.avatar_url} size={64}
+        <Avatar displayName={profile?.display_name} avatarUrl={profile?.avatar_url} size={88}
           onClick={() => setShowEdit(true)} />
-        <div className="profile-hero-info">
-          <div className="profile-name">{profile?.display_name || 'Unnamed Baker'}</div>
-          <div className="profile-handle">@{profile?.username}</div>
-          {profile?.location     && <div className="profile-location">{profile.location}</div>}
-          {profile?.starter_name && <div className="profile-location">Starter: <span className="starter-accent">{profile.starter_name}</span></div>}
-          {profile?.bio          && <div className="profile-bio">{profile.bio}</div>}
-        </div>
+        <div className="profile-name">{profile?.display_name || 'Unnamed Baker'}</div>
+        <div className="profile-handle">@{profile?.username}</div>
+        {profile?.location     && <div className="profile-location">{profile.location}</div>}
+        {profile?.starter_name && <div className="profile-location">Starter: <span className="starter-accent">{profile.starter_name}</span></div>}
+        {profile?.bio          && <div className="profile-bio">{profile.bio}</div>}
       </div>
 
       <div className="stats-row">
