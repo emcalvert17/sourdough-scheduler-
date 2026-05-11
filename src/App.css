@@ -1653,34 +1653,44 @@ h2 {
 
 .profile-modal-hero {
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  padding-right: 36px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 8px 36px 0 0;
 }
 
-.profile-modal-info { flex: 1; min-width: 0; }
-.profile-modal-name { font-size: 1.1rem; font-weight: 700; }
-.profile-modal-handle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
-.profile-modal-detail { font-size: 0.83rem; color: var(--text-muted); }
-.profile-modal-bio { font-size: 0.88rem; color: var(--text); margin: 0 0 14px; line-height: 1.5; }
+.profile-modal-name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin-top: 10px;
+}
+.profile-modal-handle { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+.profile-modal-detail { font-size: 0.82rem; color: var(--text-muted); margin-top: 3px; }
+.profile-modal-bio { font-size: 0.88rem; color: var(--text); margin-top: 8px; line-height: 1.5; max-width: 260px; }
 
 .profile-modal-stats {
   display: flex;
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 14px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
 }
 
 .profile-modal-stat {
   flex: 1;
   text-align: center;
-  padding: 10px 8px;
+  padding: 14px 6px;
   border-right: 1px solid var(--border);
+  transition: background 0.15s;
 }
 .profile-modal-stat:last-child { border-right: none; }
+.profile-modal-stat.stat-block--clickable { cursor: pointer; }
+.profile-modal-stat.stat-block--clickable:hover { background: rgba(107,61,30,0.03); }
 
 .follow-modal-btn {
   width: 100%;
