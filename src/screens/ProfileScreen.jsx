@@ -131,12 +131,20 @@ function SavedPostsSection({ userId }) {
   useEffect(() => {
     supabase
       .from('saves')
-      .select('post_id, posts(id, type, content, image_url, recipe_name, created_at, profiles(display_name))')
+      .select('post_id, posts(id, type, content, image_url, recipe_name, created_at, user_id)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(20)
-      .then(({ data }) => {
-        setPosts((data || []).map(s => s.posts).filter(Boolean));
+      .then(async ({ data }) => {
+        const posts = (data || []).map(s => s.posts).filter(Boolean);
+        const userIds = [...new Set(posts.map(p => p.user_id))];
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', userIds);
+          const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+          setPosts(posts.map(p => ({ ...p, profiles: profileMap[p.user_id] || null })));
+        } else {
+          setPosts(posts);
+        }
         setLoading(false);
       });
   }, [userId]);
