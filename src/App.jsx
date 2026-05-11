@@ -32,7 +32,7 @@ function AppShell() {
         {activeTab === 'home'    && <HomeScreen onTabChange={setActiveTab} />}
         {activeTab === 'starter' && <StarterHealthScreen />}
         {activeTab === 'gallery' && <GalleryScreen />}
-        {activeTab === 'profile' && <ProfileScreen />}
+        {activeTab === 'profile' && <ProfileScreen onTabChange={setActiveTab} />}
       </div>
       <BottomNav active={activeTab} onChange={setActiveTab} />
     </div>

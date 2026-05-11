@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { compressImage } from '../utils/photoStorage.js';
 import { getBakeLog, getBakeStreak } from '../utils/bakeLog.js';
 import { getRecipes } from '../utils/storage.js';
+import UserProfileModal from '../components/UserProfileModal.jsx';
 
 function Avatar({ displayName, avatarUrl, size = 44, onClick }) {
   const initials = (displayName || '?').slice(0, 2).toUpperCase();
@@ -12,18 +13,18 @@ function Avatar({ displayName, avatarUrl, size = 44, onClick }) {
   return <div className="avatar" style={style} onClick={onClick}>{initials}</div>;
 }
 
-function StatBlock({ label, value }) {
+function StatBlock({ label, value, onClick }) {
   return (
-    <div className="stat-block">
+    <div className={`stat-block${onClick ? ' stat-block--clickable' : ''}`} onClick={onClick}>
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
     </div>
   );
 }
 
-function UserCard({ profile, isFollowing, onToggle, disabled }) {
+function UserCard({ profile, isFollowing, onToggle, disabled, onViewProfile }) {
   return (
-    <div className="friend-card">
+    <div className="friend-card" onClick={onViewProfile} style={{ cursor: 'pointer' }}>
       <Avatar displayName={profile.display_name} avatarUrl={profile.avatar_url} />
       <div className="friend-card-info">
         <div className="friend-card-name">{profile.display_name || profile.username}</div>
@@ -31,9 +32,86 @@ function UserCard({ profile, isFollowing, onToggle, disabled }) {
         {profile.starter_name && <div className="friend-card-bio">Starter: {profile.starter_name}</div>}
         {profile.bio && <div className="friend-card-bio">{profile.bio}</div>}
       </div>
-      <button className={`btn btn-sm ${isFollowing ? 'btn-ghost' : 'btn-secondary'}`} onClick={onToggle} disabled={disabled}>
+      <button className={`btn btn-sm ${isFollowing ? 'btn-ghost' : 'btn-secondary'}`}
+        onClick={e => { e.stopPropagation(); onToggle(); }} disabled={disabled}>
         {isFollowing ? 'Following' : 'Follow'}
       </button>
+    </div>
+  );
+}
+
+function FollowListPanel({ userId, currentUserId, mode, onClose, onViewProfile }) {
+  const [users,   setUsers]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const col = mode === 'followers' ? 'follower_id' : 'following_id';
+    const joinCol = mode === 'followers' ? 'follower_id' : 'following_id';
+    supabase.from('follows')
+      .select(`${joinCol}, profiles!follows_${joinCol}_fkey(id, display_name, username, avatar_url, starter_name)`)
+      .eq(mode === 'followers' ? 'following_id' : 'follower_id', userId)
+      .then(({ data }) => {
+        setUsers((data || []).map(r => r.profiles).filter(Boolean));
+        setLoading(false);
+      });
+  }, [userId, mode]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="user-profile-modal" onClick={e => e.stopPropagation()}>
+        <button className="modal-close-btn" onClick={onClose}>✕</button>
+        <h3 style={{ marginBottom: 16 }}>{mode === 'followers' ? 'Followers' : 'Following'}</h3>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 24 }}><div className="app-loading-spinner" /></div>
+        ) : users.length === 0 ? (
+          <div className="feed-empty" style={{ padding: '16px 0' }}>
+            <div>{mode === 'followers' ? 'No followers yet' : 'Not following anyone yet'}</div>
+          </div>
+        ) : (
+          <div className="friends-list" style={{ marginTop: 0 }}>
+            {users.map(u => (
+              <div key={u.id} className="friend-card" style={{ cursor: 'pointer' }} onClick={() => onViewProfile(u.id)}>
+                <Avatar displayName={u.display_name} avatarUrl={u.avatar_url} />
+                <div className="friend-card-info">
+                  <div className="friend-card-name">{u.display_name || u.username}</div>
+                  <div className="friend-card-sub">@{u.username}</div>
+                  {u.starter_name && <div className="friend-card-bio">Starter: {u.starter_name}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BakeLogPanel({ onClose }) {
+  const log = getBakeLog();
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="user-profile-modal" onClick={e => e.stopPropagation()}>
+        <button className="modal-close-btn" onClick={onClose}>✕</button>
+        <h3 style={{ marginBottom: 16 }}>Bake History</h3>
+        {log.length === 0 ? (
+          <div className="feed-empty" style={{ padding: '16px 0' }}>
+            <div className="feed-empty-icon">🍞</div>
+            <div>No bakes logged yet. Use a recipe to start your history.</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {log.map(entry => (
+              <div key={entry.id} className="starter-log-row">
+                <div className="starter-log-details">
+                  <div className="starter-log-date" style={{ fontWeight: 600 }}>{entry.recipeName}</div>
+                  <div className="starter-log-meta">{new Date(entry.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                </div>
+                <span style={{ fontSize: '1.4rem' }}>🍞</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -196,7 +274,7 @@ function EditProfileModal({ profile, onClose, onSave }) {
   );
 }
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ onTabChange }) {
   const { user, profile, refreshProfile } = useAuth();
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -207,6 +285,9 @@ export default function ProfileScreen() {
   const [toggling,       setToggling]       = useState(new Set());
   const [showEdit,       setShowEdit]       = useState(false);
   const [activeSection,  setActiveSection]  = useState('discover'); // 'discover' | 'saved'
+  const [viewingUserId,  setViewingUserId]  = useState(null);
+  const [followPanel,    setFollowPanel]    = useState(null); // 'followers' | 'following'
+  const [showBakeLog,    setShowBakeLog]    = useState(false);
 
   const bakeLog = getBakeLog();
   const streak  = getBakeStreak();
@@ -279,11 +360,11 @@ export default function ProfileScreen() {
       </div>
 
       <div className="stats-row">
-        <StatBlock label="Followers"  value={followersCount} />
-        <StatBlock label="Following"  value={followingCount} />
-        <StatBlock label="Bakes"      value={bakeLog.length} />
-        <StatBlock label="Recipes"    value={recipes.length} />
-        <StatBlock label="Streak"     value={streak} />
+        <StatBlock label="Followers"  value={followersCount} onClick={() => setFollowPanel('followers')} />
+        <StatBlock label="Following"  value={followingCount} onClick={() => setFollowPanel('following')} />
+        <StatBlock label="Bakes"      value={bakeLog.length} onClick={() => setShowBakeLog(true)} />
+        <StatBlock label="Recipes"    value={recipes.length} onClick={() => onTabChange?.('bakes')} />
+        <StatBlock label="Streak"     value={streak} onClick={() => setShowBakeLog(true)} />
       </div>
 
       <div className="profile-section-tabs">
@@ -305,7 +386,8 @@ export default function ProfileScreen() {
               ? <div className="feed-empty" style={{ padding: '24px 0' }}>No bakers found for "{searchQuery}"</div>
               : displayUsers.map(u => (
                   <UserCard key={u.id} profile={u} isFollowing={followingSet.has(u.id)}
-                    onToggle={() => handleToggleFollow(u.id)} disabled={toggling.has(u.id)} />
+                    onToggle={() => handleToggleFollow(u.id)} disabled={toggling.has(u.id)}
+                    onViewProfile={() => setViewingUserId(u.id)} />
                 ))
             }
           </div>
@@ -316,6 +398,26 @@ export default function ProfileScreen() {
 
       {showEdit && profile && (
         <EditProfileModal profile={profile} onClose={() => setShowEdit(false)} onSave={refreshProfile} />
+      )}
+
+      {followPanel && (
+        <FollowListPanel
+          userId={user.id}
+          currentUserId={user.id}
+          mode={followPanel}
+          onClose={() => setFollowPanel(null)}
+          onViewProfile={id => { setFollowPanel(null); setViewingUserId(id); }}
+        />
+      )}
+
+      {showBakeLog && <BakeLogPanel onClose={() => setShowBakeLog(false)} />}
+
+      {viewingUserId && (
+        <UserProfileModal
+          userId={viewingUserId}
+          currentUserId={user.id}
+          onClose={() => setViewingUserId(null)}
+        />
       )}
     </div>
   );
