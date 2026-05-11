@@ -351,7 +351,7 @@ export default function HomeScreen({ onTabChange }) {
 
     let query = supabase
       .from('posts')
-      .select('*, profiles(id, username, display_name, avatar_url)')
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -362,17 +362,26 @@ export default function HomeScreen({ onTabChange }) {
       query = query.in('user_id', ids);
     }
 
-    const { data: postsData } = await query;
-    if (!postsData) { setLoading(false); return; }
+    const { data: postsData, error: feedError } = await query;
+    if (feedError) { console.error('Feed load error:', feedError); setLoading(false); return; }
+    if (!postsData || postsData.length === 0) { setPosts([]); setLoading(false); return; }
 
-    const [{ data: myLikes }, { data: mySaves }] = await Promise.all([
+    const userIds = [...new Set(postsData.map(p => p.user_id))];
+    const [{ data: profiles }, { data: myLikes }, { data: mySaves }] = await Promise.all([
+      supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', userIds),
       supabase.from('likes').select('post_id').eq('user_id', user.id),
       supabase.from('saves').select('post_id').eq('user_id', user.id),
     ]);
 
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
     const likedSet = new Set((myLikes || []).map(l => l.post_id));
     const savedSet = new Set((mySaves || []).map(s => s.post_id));
-    setPosts(postsData.map(p => ({ ...p, user_liked: likedSet.has(p.id), user_saved: savedSet.has(p.id) })));
+    setPosts(postsData.map(p => ({
+      ...p,
+      profiles: profileMap[p.user_id] || null,
+      user_liked: likedSet.has(p.id),
+      user_saved: savedSet.has(p.id),
+    })));
     setLoading(false);
   }, [user.id]);
 
