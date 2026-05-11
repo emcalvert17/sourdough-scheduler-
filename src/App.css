@@ -2505,3 +2505,26 @@ body::before {
   color: var(--text-muted);
   margin-left: 6px;
 }
+
+/* Recipe link button on feed cards */
+.feed-recipe-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.recipe-link-btn {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--primary);
+  text-decoration: none;
+  border: 1px solid var(--primary);
+  border-radius: 100px;
+  padding: 2px 10px;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.recipe-link-btn:hover { opacity: 1; }

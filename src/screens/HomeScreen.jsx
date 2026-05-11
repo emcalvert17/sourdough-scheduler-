@@ -81,6 +81,7 @@ function CreatePostModal({ onClose, onPost }) {
   const [type,         setType]         = useState('bake');
   const [content,      setContent]      = useState('');
   const [recipeName,   setRecipeName]   = useState('');
+  const [recipeLink,   setRecipeLink]   = useState('');
   const [imagePreview, setImagePreview] = useState(null);
   const [imgLoading,   setImgLoading]   = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
@@ -102,7 +103,7 @@ function CreatePostModal({ onClose, onPost }) {
     setSubmitting(true);
     setPostError('');
     try {
-      await onPost({ type, content: content.trim(), recipe_name: recipeName.trim() || null, imagePreview });
+      await onPost({ type, content: content.trim(), recipe_name: recipeName.trim() || null, recipe_link: recipeLink.trim() || null, imagePreview });
       onClose();
     } catch (e) {
       setPostError(e.message || 'Something went wrong. Please try again.');
@@ -119,11 +120,18 @@ function CreatePostModal({ onClose, onPost }) {
           <button className={`post-type-btn${type === 'tip'  ? ' active' : ''}`} onClick={() => setType('tip')}>Tip</button>
         </div>
         {type === 'bake' && (
-          <div className="form-group">
-            <label className="form-label">Recipe name <span className="form-optional">(optional)</span></label>
-            <input className="form-input" placeholder="e.g. Country Sourdough"
-              value={recipeName} onChange={e => setRecipeName(e.target.value)} />
-          </div>
+          <>
+            <div className="form-group">
+              <label className="form-label">Recipe name <span className="form-optional">(optional)</span></label>
+              <input className="form-input" placeholder="e.g. Country Sourdough"
+                value={recipeName} onChange={e => setRecipeName(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Recipe link <span className="form-optional">(optional)</span></label>
+              <input className="form-input" placeholder="https://…" type="url"
+                value={recipeLink} onChange={e => setRecipeLink(e.target.value)} />
+            </div>
+          </>
         )}
         <div className="form-group">
           <label className="form-label">{type === 'bake' ? 'How did the bake go?' : 'Share your tip'}</label>
@@ -409,7 +417,12 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted 
       <div className="feed-card-body">
         {post.recipe_name && (
           <>
-            <div className="feed-recipe-label">{post.recipe_name}</div>
+            <div className="feed-recipe-label">
+              {post.recipe_name}
+              {post.recipe_link && (
+                <a href={post.recipe_link} target="_blank" rel="noopener noreferrer" className="recipe-link-btn">View Recipe</a>
+              )}
+            </div>
             <FeedStarRating value={userRating} onRate={handleRate} />
             {ratingError && <div style={{ fontSize: '0.72rem', color: 'var(--danger, #c0392b)', marginTop: 2 }}>Couldn't save: {ratingError}</div>}
           </>
@@ -524,7 +537,7 @@ export default function HomeScreen({ onTabChange }) {
   useEffect(() => { if (feedMode !== 'rankings') loadFeed(feedMode); }, [feedMode, loadFeed]);
   useEffect(() => { loadUnreadCount(); }, [loadUnreadCount]);
 
-  const handlePost = async ({ type, content, recipe_name, imagePreview }) => {
+  const handlePost = async ({ type, content, recipe_name, recipe_link, imagePreview }) => {
     const postId = generateId();
     let image_url = null;
     if (imagePreview) {
@@ -539,7 +552,7 @@ export default function HomeScreen({ onTabChange }) {
     }
     const { error } = await supabase
       .from('posts')
-      .insert({ id: postId, user_id: user.id, type, content, recipe_name, image_url });
+      .insert({ id: postId, user_id: user.id, type, content, recipe_name, recipe_link, image_url });
     if (error) throw new Error(error.message);
     await loadFeed(feedMode);
   };
