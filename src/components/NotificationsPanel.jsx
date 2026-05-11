@@ -75,7 +75,6 @@ export default function NotificationsPanel({ userId, onClose }) {
           </div>
         ) : notifs.length === 0 ? (
           <div className="feed-empty" style={{ padding: '40px 16px' }}>
-            <div className="feed-empty-icon">🔔</div>
             <div className="feed-empty-title">No notifications yet</div>
             <div className="feed-empty-sub">When people like or comment on your posts, you'll see it here.</div>
           </div>

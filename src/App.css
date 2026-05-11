@@ -250,11 +250,13 @@ body {
 .section-title {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
   margin-bottom: 16px;
   letter-spacing: 0;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid var(--border);
 }
 
 /* ── Back nav ────────────────────────────────── */
@@ -515,16 +517,18 @@ h2 {
 /* ── Tags & chips ────────────────────────────── */
 
 .tag {
-  display: inline-block; padding: 3px 10px;
-  border-radius: 100px; font-size: 0.71rem; font-weight: 700;
-  letter-spacing: 0.02em;
+  display: inline-block; padding: 2px 8px;
+  border-radius: 3px; font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  border: 1.5px solid currentColor; background: transparent;
 }
 .criteria-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .criteria-chip {
   display: inline-flex; align-items: center;
-  background: var(--surface); border: 1.5px solid var(--border);
-  border-radius: 100px; padding: 4px 11px;
-  font-size: 0.77rem; color: var(--text-muted); font-weight: 500;
+  background: transparent; border: 1.5px solid var(--border);
+  border-radius: 3px; padding: 3px 9px;
+  font-size: 0.7rem; color: var(--text-muted); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
 }
 
 /* ── Start card ──────────────────────────────── */
@@ -801,15 +805,17 @@ h2 {
 
 .feed-tag {
   flex-shrink: 0;
-  padding: 3px 10px;
-  border-radius: 100px;
-  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  border: 1.5px solid currentColor;
+  background: transparent;
 }
-.feed-tag--bake { background: var(--accent-light); color: var(--accent); }
-.feed-tag--tip  { background: #fef3c7; color: #92400e; }
+.feed-tag--bake { color: var(--accent); }
+.feed-tag--tip  { color: #92400e; }
 
 .feed-card-img-wrap { width: 100%; aspect-ratio: 4/3; overflow: hidden; }
 .feed-card-img {
@@ -1045,7 +1051,12 @@ h2 {
   display: flex;
   align-items: flex-start;
   gap: 18px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
+  background: linear-gradient(135deg, #fdf0df 0%, #f7e8d4 100%);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 4px;
 }
 .profile-hero-info { flex: 1; }
 .profile-name {
@@ -1062,30 +1073,32 @@ h2 {
 .profile-bio { font-size: 0.88rem; color: var(--text); margin-top: 8px; line-height: 1.5; }
 
 .stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 8px;
+  display: flex;
+  border-top: 1.5px solid var(--border);
+  border-bottom: 1.5px solid var(--border);
+  margin: 0 0 20px;
 }
 .stat-block {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 14px 10px;
+  flex: 1;
+  padding: 14px 6px;
   text-align: center;
-  transition: box-shadow 0.2s, transform 0.2s;
+  border-right: 1px solid var(--border);
+  background: none;
+  border-radius: 0;
+  transition: background 0.15s;
 }
-.stat-block:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.stat-block:last-child { border-right: none; }
+.stat-block:hover { box-shadow: none; transform: none; background: rgba(107,61,30,0.03); }
 .stat-value {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--primary);
   line-height: 1;
   margin-bottom: 4px;
 }
-.stat-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.stat-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
 
 .friends-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .friend-card {
@@ -1099,7 +1112,7 @@ h2 {
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s, transform 0.2s;
 }
-.friend-card:hover { box-shadow: var(--shadow); transform: translateX(3px); }
+.friend-card:hover { box-shadow: var(--shadow); border-left: 3px solid var(--accent); }
 .friend-card-info { flex: 1; min-width: 0; }
 .friend-card-name { font-size: 0.92rem; font-weight: 700; }
 .friend-card-sub  { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
@@ -1391,9 +1404,16 @@ h2 {
   padding: 60px 24px;
   text-align: center;
 }
-.feed-empty-icon { font-size: 3rem; margin-bottom: 12px; }
-.feed-empty-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
-.feed-empty-sub { font-size: 0.9rem; color: var(--text-muted); }
+.feed-empty-icon { display: none; }
+.feed-empty-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+.feed-empty-sub { font-size: 0.88rem; color: var(--text-muted); line-height: 1.55; }
 
 /* ── Create post modal extras ────────────────── */
 .post-type-toggle {
@@ -2068,3 +2088,138 @@ h2 {
 .starter-log-date { font-size: 0.85rem; font-weight: 600; }
 .starter-log-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
 .starter-log-notes { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+
+/* ── Artisan / handmade overrides ────────────── */
+
+/* Paper grain texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.038;
+  mix-blend-mode: multiply;
+}
+
+/* Warmer card borders */
+.card { border-color: #d9c4a8; }
+
+/* Editorial screen header rule */
+.screen-header { border-bottom: 2px solid var(--border); }
+
+/* Section/timeline labels — ruled line feel */
+.timeline-section-label {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+/* Stamp-style activity log tag */
+.starter-log-activity {
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: transparent !important;
+  border: 1.5px solid currentColor;
+}
+
+/* Activity picker — no emoji, label only */
+.activity-btn {
+  border-radius: 4px;
+  border: 1.5px solid var(--border);
+  transition: border-color 0.15s, background 0.15s;
+}
+.activity-btn.active {
+  border-color: var(--activity-color, var(--primary));
+  background: color-mix(in srgb, var(--activity-color, var(--primary)) 10%, transparent);
+}
+.activity-emoji { display: none; }
+.activity-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* Post type buttons — stamp style */
+.post-type-btn {
+  border-radius: 3px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* Conflict banner — text warning instead of emoji */
+.conflict-banner-icon { display: none; }
+
+/* Bottom nav — slightly warmer */
+.bottom-nav { border-top: 1.5px solid #d9c4a8; }
+
+/* Recipe card tag */
+.tag[style] { border-radius: 3px; }
+
+/* Profile section tabs — underline style */
+.profile-section-tabs {
+  border-radius: 0;
+  background: none;
+  border-bottom: 1.5px solid var(--border);
+  padding: 0;
+  gap: 0;
+  margin-bottom: 16px;
+}
+.profile-section-tab {
+  border-radius: 0;
+  background: none;
+  border-bottom: 2.5px solid transparent;
+  padding: 10px 18px;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1.5px;
+}
+.profile-section-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: none;
+  box-shadow: none;
+}
+
+/* Feed mode toggle — same underline treatment */
+.feed-mode-toggle {
+  border-radius: 0;
+  background: none;
+  border-bottom: 1.5px solid var(--border);
+  padding: 0;
+  gap: 0;
+  margin-bottom: 16px;
+}
+.feed-mode-btn {
+  border-radius: 0;
+  background: none;
+  border-bottom: 2.5px solid transparent;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: -1.5px;
+}
+.feed-mode-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: none;
+}
+
+/* auth confirm icon — hide emoji */
+.auth-confirm-icon { display: none; }

@@ -103,7 +103,6 @@ export default function AuthScreen() {
           </form>
         ) : done ? (
           <div className="auth-confirm">
-            <div className="auth-confirm-icon">✉️</div>
             <div className="auth-confirm-title">Check your email</div>
             <div className="auth-confirm-sub">
               We sent a confirmation link to <strong>{suEmail}</strong>.

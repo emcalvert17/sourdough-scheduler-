@@ -95,8 +95,8 @@ function BakeLogPanel({ onClose }) {
         <h3 style={{ marginBottom: 16 }}>Bake History</h3>
         {log.length === 0 ? (
           <div className="feed-empty" style={{ padding: '16px 0' }}>
-            <div className="feed-empty-icon">🍞</div>
-            <div>No bakes logged yet. Use a recipe to start your history.</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 700, color: 'var(--primary)', marginBottom: 8 }}>No bakes logged yet</div>
+            <div>Use a recipe to start your history.</div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -106,7 +106,7 @@ function BakeLogPanel({ onClose }) {
                   <div className="starter-log-date" style={{ fontWeight: 600 }}>{entry.recipeName}</div>
                   <div className="starter-log-meta">{new Date(entry.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
                 </div>
-                <span style={{ fontSize: '1.4rem' }}>🍞</span>
+                <span className="feed-tag feed-tag--bake">bake</span>
               </div>
             ))}
           </div>
@@ -144,8 +144,7 @@ function SavedPostsSection({ userId }) {
   if (loading) return <div className="field-hint" style={{ padding: '16px 0' }}>Loading saved posts…</div>;
   if (posts.length === 0) return (
     <div className="feed-empty" style={{ padding: '24px 0' }}>
-      <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🔖</div>
-      <div style={{ fontWeight: 600, marginBottom: 4 }}>No saved posts yet</div>
+      <div className="feed-empty-title">No saved posts yet</div>
       <div className="field-hint">Tap the bookmark icon on any post to save it here</div>
     </div>
   );
@@ -232,7 +231,7 @@ function EditProfileModal({ profile, onClose, onSave }) {
         <div className="avatar-upload-row">
           <div className="avatar-upload-wrap" onClick={() => fileRef.current?.click()}>
             <Avatar displayName={form.display_name} avatarUrl={avatarPreview} size={72} />
-            <div className="avatar-upload-overlay">📷</div>
+            <div className="avatar-upload-overlay">edit</div>
           </div>
           <span className="field-hint">Tap to change photo</span>
         </div>

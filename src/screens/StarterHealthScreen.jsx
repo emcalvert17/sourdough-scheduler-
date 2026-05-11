@@ -11,11 +11,11 @@ function saveLogs(logs) {
 }
 
 const ACTIVITY_LEVELS = [
-  { value: 1, label: 'Sluggish',    emoji: '😴', color: '#9a7860' },
-  { value: 2, label: 'Slow',        emoji: '🐢', color: '#b87200' },
-  { value: 3, label: 'Active',      emoji: '😊', color: '#5a8a6a' },
-  { value: 4, label: 'Very Active', emoji: '🚀', color: '#2d6b4a' },
-  { value: 5, label: 'Peak',        emoji: '🔥', color: '#c05a3a' },
+  { value: 1, label: 'Sluggish',    color: '#9a7860' },
+  { value: 2, label: 'Slow',        color: '#b87200' },
+  { value: 3, label: 'Active',      color: '#5a8a6a' },
+  { value: 4, label: 'Very Active', color: '#2d6b4a' },
+  { value: 5, label: 'Peak',        color: '#c05a3a' },
 ];
 
 function formatDate(iso) {
@@ -159,7 +159,6 @@ export default function StarterHealthScreen() {
                   style={{ '--activity-color': a.color }}
                   onClick={() => setActivity(a.value)}
                 >
-                  <span className="activity-emoji">{a.emoji}</span>
                   <span className="activity-label">{a.label}</span>
                 </button>
               ))}
@@ -202,7 +201,6 @@ export default function StarterHealthScreen() {
       {/* History */}
       {logs.length === 0 ? (
         <div className="feed-empty">
-          <div className="feed-empty-icon">🦠</div>
           <div className="feed-empty-title">No feedings logged yet</div>
           <div className="feed-empty-sub">Track your starter's health over time — activity, rise times, and notes.</div>
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowForm(true)}>

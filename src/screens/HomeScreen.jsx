@@ -108,8 +108,8 @@ function CreatePostModal({ onClose, onPost }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h3>Share with the community</h3>
         <div className="post-type-toggle">
-          <button className={`post-type-btn${type === 'bake' ? ' active' : ''}`} onClick={() => setType('bake')}>🍞 Bake</button>
-          <button className={`post-type-btn${type === 'tip'  ? ' active' : ''}`} onClick={() => setType('tip')}>💡 Tip</button>
+          <button className={`post-type-btn${type === 'bake' ? ' active' : ''}`} onClick={() => setType('bake')}>Bake</button>
+          <button className={`post-type-btn${type === 'tip'  ? ' active' : ''}`} onClick={() => setType('tip')}>Tip</button>
         </div>
         {type === 'bake' && (
           <div className="form-group">
@@ -131,7 +131,7 @@ function CreatePostModal({ onClose, onPost }) {
           </div>
         ) : (
           <button className="btn btn-ghost add-photo-btn" onClick={() => fileRef.current?.click()} disabled={imgLoading}>
-            {imgLoading ? 'Processing…' : '📷 Add Photo'}
+            {imgLoading ? 'Processing…' : 'Add Photo'}
           </button>
         )}
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
@@ -424,14 +424,12 @@ export default function HomeScreen({ onTabChange }) {
         <div className="feed-loading">{[1,2,3].map(i => <div key={i} className="feed-skeleton" />)}</div>
       ) : emptyFollowing ? (
         <div className="feed-empty">
-          <div className="feed-empty-icon">👋</div>
           <div className="feed-empty-title">No posts from people you follow yet</div>
           <div className="feed-empty-sub">Find bakers to follow on your Profile tab</div>
           <button className="btn btn-ghost" style={{ marginTop: 16 }} onClick={() => setFeedMode('discover')}>Browse Discover</button>
         </div>
       ) : posts.length === 0 ? (
         <div className="feed-empty">
-          <div className="feed-empty-icon">🍞</div>
           <div className="feed-empty-title">No posts yet</div>
           <div className="feed-empty-sub">Be the first to share a bake!</div>
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowCreate(true)}>Share your first bake</button>

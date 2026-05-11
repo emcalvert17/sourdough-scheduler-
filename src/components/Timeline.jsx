@@ -61,14 +61,13 @@ function ShareBakeButton({ recipe, timeline, userId, eatTime }) {
   return (
     <>
       <button className="btn btn-secondary btn-full share-bake-btn" onClick={() => setOpen(true)}>
-        🍞 Share this bake to the feed
+        Share this bake to the feed
       </button>
       {open && (
         <div className="modal-overlay" onClick={() => setOpen(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             {shared ? (
               <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🎉</div>
                 <h3>Shared!</h3>
                 <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>Your bake schedule is on the feed.</p>
               </div>
@@ -142,7 +141,7 @@ export default function Timeline({ recipe, timeline, criteria, conflicts, sugges
 
       {conflicts?.length > 0 && (
         <div className="conflict-banner">
-          <div className="conflict-banner-icon">⚠️</div>
+          <div className="conflict-banner-icon">!</div>
           <div className="conflict-banner-body">
             <strong>{conflicts.length} step{conflicts.length !== 1 ? 's' : ''} fall outside your active hours</strong>
             {activeHours && (
@@ -208,7 +207,7 @@ export default function Timeline({ recipe, timeline, criteria, conflicts, sugges
               </div>
               {step.outOfWindow && (
                 <div className="step-warning">
-                  ⚠ Outside active hours
+                  Outside active hours
                 </div>
               )}
               {step.notes && <div className="timeline-notes">{step.notes}</div>}
@@ -216,7 +215,7 @@ export default function Timeline({ recipe, timeline, criteria, conflicts, sugges
                 <div key={i} className={`sf-event${sf.outOfWindow ? ' sf-event--warn' : ''}`}>
                   <span className="sf-time">{formatTime(sf.time)}</span>
                   <span>{sf.label}</span>
-                  {sf.outOfWindow && <span className="sf-warn-icon">⚠</span>}
+                  {sf.outOfWindow && <span className="sf-warn-icon">!</span>}
                 </div>
               ))}
             </div>

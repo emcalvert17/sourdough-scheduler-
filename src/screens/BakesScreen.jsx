@@ -40,7 +40,6 @@ function ShareRecipeModal({ recipe, userId, onClose }) {
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal" onClick={e => e.stopPropagation()}>
           <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🎉</div>
             <h3>Recipe shared!</h3>
             <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>"{recipe.name}" is now on the community feed.</p>
           </div>
