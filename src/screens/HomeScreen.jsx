@@ -95,12 +95,19 @@ function CreatePostModal({ onClose, onPost }) {
     finally { setImgLoading(false); e.target.value = ''; }
   };
 
+  const [postError, setPostError] = useState('');
+
   const handleSubmit = async () => {
     if (!content.trim()) return;
     setSubmitting(true);
-    await onPost({ type, content: content.trim(), recipe_name: recipeName.trim() || null, imagePreview });
-    setSubmitting(false);
-    onClose();
+    setPostError('');
+    try {
+      await onPost({ type, content: content.trim(), recipe_name: recipeName.trim() || null, imagePreview });
+      onClose();
+    } catch (e) {
+      setPostError(e.message || 'Something went wrong. Please try again.');
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -135,6 +142,7 @@ function CreatePostModal({ onClose, onPost }) {
           </button>
         )}
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
+        {postError && <div className="auth-error" style={{ marginTop: 12 }}>{postError}</div>}
         <div className="modal-actions" style={{ marginTop: 16 }}>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !content.trim()}>
@@ -384,12 +392,11 @@ export default function HomeScreen({ onTabChange }) {
         }
       } catch (e) { console.error('Image upload failed:', e); }
     }
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('posts')
-      .insert({ id: postId, user_id: user.id, type, content, recipe_name, image_url })
-      .select('*, profiles(id, username, display_name, avatar_url)')
-      .single();
-    if (!error && data) setPosts(prev => [{ ...data, user_liked: false, user_saved: false, comments_count: 0 }, ...prev]);
+      .insert({ id: postId, user_id: user.id, type, content, recipe_name, image_url });
+    if (error) throw new Error(error.message);
+    await loadFeed(feedMode);
   };
 
   const handleDeleted = (postId) => setPosts(prev => prev.filter(p => p.id !== postId));
