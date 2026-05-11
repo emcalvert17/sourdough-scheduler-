@@ -1,21 +1,32 @@
 import { useState } from 'react';
 
-function StarRating({ value, onRate, readonly = false }) {
+function LoafIcon({ filled, size = 20 }) {
+  return (
+    <svg width={size} height={size * 0.8} viewBox="0 0 24 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 17h20" />
+      <path d="M4 17c0-5.5 2.5-9 8-9s8 3.5 8 9" fill={filled ? 'currentColor' : 'none'} />
+      {filled && <>
+        <path d="M10 11c1-1.5 3-1.3 4-.7" stroke="white" strokeWidth="1.3" opacity="0.75" />
+        <path d="M9 13.5c1-1.2 3.5-1.2 5.5-.5" stroke="white" strokeWidth="1.3" opacity="0.75" />
+      </>}
+    </svg>
+  );
+}
+
+function BreadRating({ value, onRate }) {
   const [hover, setHover] = useState(null);
   const display = hover ?? value ?? 0;
   return (
     <div className="star-rating">
       {[1,2,3,4,5].map(n => (
-        <span
-          key={n}
-          className={`star${display >= n ? ' star--filled' : ''}`}
-          onClick={readonly ? undefined : () => onRate(n === value ? 0 : n)}
-          onMouseEnter={readonly ? undefined : () => setHover(n)}
-          onMouseLeave={readonly ? undefined : () => setHover(null)}
-          style={{ cursor: readonly ? 'default' : 'pointer' }}
-        >★</span>
+        <span key={n} className={`loaf-btn${display >= n ? ' loaf-btn--filled' : ''}`}
+          onClick={() => onRate(n === value ? 0 : n)}
+          onMouseEnter={() => setHover(n)}
+          onMouseLeave={() => setHover(null)}>
+          <LoafIcon filled={display >= n} size={18} />
+        </span>
       ))}
-      {!readonly && value > 0 && (
+      {value > 0 && (
         <span className="star-clear" onClick={() => onRate(0)}>✕</span>
       )}
     </div>
@@ -65,7 +76,7 @@ export default function RecipeList({ recipes, onNew, onEdit, onDelete, onUse, on
                   ` · ${recipe.stretchAndFolds.count}x stretch & fold`}
               </div>
               {onRate && (
-                <StarRating value={recipe.rating ?? 0} onRate={rating => onRate(recipe.id, rating)} />
+                <BreadRating value={recipe.rating ?? 0} onRate={rating => onRate(recipe.id, rating)} />
               )}
             </div>
             <div className="recipe-card-actions">

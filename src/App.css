@@ -2416,21 +2416,23 @@ body::before {
 /* Bottom padding for nav height increase */
 .app { padding-bottom: 92px; }
 
-/* ── Star ratings ─────────────────────────────────────────── */
+/* ── Bread ratings ────────────────────────────────────────── */
 .star-rating {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   margin: 6px 0 4px;
 }
-.star {
-  font-size: 18px;
+.loaf-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
   color: var(--border);
-  transition: color 0.1s;
+  transition: color 0.12s, transform 0.1s;
   user-select: none;
-  line-height: 1;
 }
-.star--filled { color: var(--primary); }
+.loaf-btn:hover { transform: scale(1.15); }
+.loaf-btn--filled { color: var(--primary); }
 .star-label {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -2444,17 +2446,16 @@ body::before {
   cursor: pointer;
   opacity: 0.6;
 }
-
 .stars-display {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
-.stars-display .star { font-size: 14px; cursor: default; }
+.stars-display .loaf-btn { cursor: default; }
+.stars-display .loaf-btn:hover { transform: none; }
 
-/* Recipe list star rating */
-.recipe-card .star-rating { margin: 4px 0 0; }
-.recipe-card .star { font-size: 16px; }
+/* Recipe list bread rating */
+.recipe-card .star-rating { margin: 6px 0 0; }
 
 /* ── Community Rankings ───────────────────────────────────── */
 .rankings-list {
