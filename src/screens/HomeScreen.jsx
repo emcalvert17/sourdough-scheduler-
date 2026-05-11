@@ -277,6 +277,7 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted 
   const [sending,        setSending]        = useState(false);
 
   const [userRating,     setUserRating]     = useState(() => post.user_rating ?? null);
+  const [ratingError,    setRatingError]    = useState(null);
 
   const [showMenu,       setShowMenu]       = useState(false);
   const [deleting,       setDeleting]       = useState(false);
@@ -322,12 +323,18 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted 
   };
 
   const handleRate = async (score) => {
+    const prev = userRating;
     const newScore = score === userRating ? null : score;
     setUserRating(newScore);
-    await supabase.from('ratings').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+    setRatingError(null);
+    const { error: delErr } = await supabase.from('ratings').delete().eq('post_id', post.id).eq('user_id', currentUserId);
+    if (delErr) console.warn('Rating delete:', delErr.message);
     if (newScore) {
       const { error } = await supabase.from('ratings').insert({ post_id: post.id, user_id: currentUserId, score: newScore });
-      if (error) { console.error('Rating error:', error); setUserRating(userRating); }
+      if (error) {
+        setUserRating(prev);
+        setRatingError(error.message);
+      }
     }
   };
 
@@ -404,6 +411,7 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted 
           <>
             <div className="feed-recipe-label">{post.recipe_name}</div>
             <FeedStarRating value={userRating} onRate={handleRate} />
+            {ratingError && <div style={{ fontSize: '0.72rem', color: 'var(--danger, #c0392b)', marginTop: 2 }}>Couldn't save: {ratingError}</div>}
           </>
         )}
         <p className="feed-caption">{post.content}</p>
