@@ -124,14 +124,50 @@ function timeAgo(iso) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function SavedPostDetail({ post, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ padding: 0, overflow: 'hidden', maxWidth: 440 }}>
+        {post.image_url && (
+          <img src={post.image_url} alt="" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', display: 'block' }} />
+        )}
+        <div style={{ padding: '20px 20px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span className={`feed-tag feed-tag--${post.type}`}>{post.type}</span>
+            {post.profiles?.display_name && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>by {post.profiles.display_name}</span>
+            )}
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>{timeAgo(post.created_at)}</span>
+          </div>
+          {post.recipe_name && (
+            <div style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)', marginBottom: 8 }}>
+              {post.recipe_name}
+            </div>
+          )}
+          {post.recipe_link && (
+            <a href={post.recipe_link} target="_blank" rel="noopener noreferrer" className="recipe-link-btn" style={{ display: 'inline-block', marginBottom: 10 }}>
+              View Recipe
+            </a>
+          )}
+          <p style={{ fontSize: '0.92rem', lineHeight: 1.65, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{post.content}</p>
+        </div>
+        <div style={{ padding: '12px 20px 20px' }}>
+          <button className="btn btn-ghost btn-full" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SavedPostsSection({ userId }) {
-  const [posts,   setPosts]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [posts,       setPosts]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [viewingPost, setViewingPost] = useState(null);
 
   useEffect(() => {
     supabase
       .from('saves')
-      .select('post_id, posts(id, type, content, image_url, recipe_name, created_at, user_id)')
+      .select('post_id, posts(id, type, content, image_url, recipe_name, recipe_link, created_at, user_id)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(20)
@@ -139,7 +175,7 @@ function SavedPostsSection({ userId }) {
         const posts = (data || []).map(s => s.posts).filter(Boolean);
         const userIds = [...new Set(posts.map(p => p.user_id))];
         if (userIds.length > 0) {
-          const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', userIds);
+          const { data: profiles } = await supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds);
           const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
           setPosts(posts.map(p => ({ ...p, profiles: profileMap[p.user_id] || null })));
         } else {
@@ -158,19 +194,32 @@ function SavedPostsSection({ userId }) {
   );
 
   return (
+    <>
     <div className="saved-posts-grid">
       {posts.map(p => (
-        <div key={p.id} className="saved-post-card">
+        <div key={p.id} className="saved-post-card" onClick={() => setViewingPost(p)} style={{ cursor: 'pointer' }}>
           {p.image_url
-            ? <img src={p.image_url} alt="" className="saved-post-img" loading="lazy" />
-            : <div className="saved-post-text">
-                <span className={`feed-tag feed-tag--${p.type}`} style={{ marginBottom: 6 }}>{p.type}</span>
-                <p>{p.recipe_name || (p.content.length > 50 ? p.content.slice(0, 50) + '…' : p.content)}</p>
+            ? (
+              <div className="saved-post-img-wrap">
+                <img src={p.image_url} alt="" className="saved-post-img" loading="lazy" />
+                {p.recipe_name && <div className="saved-post-overlay">{p.recipe_name}</div>}
               </div>
+            ) : (
+              <div className="saved-post-text">
+                <span className={`feed-tag feed-tag--${p.type}`} style={{ marginBottom: 8 }}>{p.type}</span>
+                {p.recipe_name && <div className="saved-post-recipe">{p.recipe_name}</div>}
+                <p>{p.content.length > 80 ? p.content.slice(0, 80) + '…' : p.content}</p>
+                {p.profiles?.display_name && (
+                  <div className="saved-post-author">— {p.profiles.display_name}</div>
+                )}
+              </div>
+            )
           }
         </div>
       ))}
     </div>
+    {viewingPost && <SavedPostDetail post={viewingPost} onClose={() => setViewingPost(null)} />}
+    </>
   );
 }
 
