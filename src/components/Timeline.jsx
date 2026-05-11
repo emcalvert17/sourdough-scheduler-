@@ -30,8 +30,15 @@ function TimelineRow({ time, dotColor, children, index = 0 }) {
   );
 }
 
-export default function Timeline({ recipe, timeline, criteria, starterFeeds, onBack, onBackToList }) {
-  const { tempF, activity, proofType, coldRetardHours } = criteria;
+function formatHour(h) {
+  if (h === 0)  return '12 AM';
+  if (h < 12)   return `${h} AM`;
+  if (h === 12) return '12 PM';
+  return `${h - 12} PM`;
+}
+
+export default function Timeline({ recipe, timeline, criteria, conflicts, suggestedAdjustMinutes, starterFeeds, onBack, onBackToList }) {
+  const { tempF, activity, proofType, coldRetardHours, activeHours } = criteria;
   const tempC = Math.round((tempF - 32) * 5 / 9);
 
   const eatTime       = timeline[timeline.length - 1]?.endTime;
@@ -63,6 +70,24 @@ export default function Timeline({ recipe, timeline, criteria, starterFeeds, onB
         <div className="start-card-time">{formatDateTime(firstEvent)}</div>
         <div className="start-card-sub">to eat at {formatDateTime(eatTime)}</div>
       </div>
+
+      {conflicts?.length > 0 && (
+        <div className="conflict-banner">
+          <div className="conflict-banner-icon">⚠️</div>
+          <div className="conflict-banner-body">
+            <strong>{conflicts.length} step{conflicts.length !== 1 ? 's' : ''} fall outside your active hours</strong>
+            {activeHours && (
+              <span className="conflict-hours"> ({formatHour(activeHours.from)}–{formatHour(activeHours.to)})</span>
+            )}
+            {suggestedAdjustMinutes !== 0 && (
+              <div className="conflict-fix">
+                Try {suggestedAdjustMinutes > 0 ? 'moving your eat time' : 'moving your eat time'}{' '}
+                <strong>{formatDuration(Math.abs(suggestedAdjustMinutes))} {suggestedAdjustMinutes > 0 ? 'later' : 'earlier'}</strong>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {hasStarter && (
         <>
@@ -112,11 +137,17 @@ export default function Timeline({ recipe, timeline, criteria, starterFeeds, onB
                   <span className="adjusted-note">(base {formatDuration(step.baseDuration)}, adjusted)</span>
                 )}
               </div>
+              {step.outOfWindow && (
+                <div className="step-warning">
+                  ⚠ Outside active hours
+                </div>
+              )}
               {step.notes && <div className="timeline-notes">{step.notes}</div>}
               {step.sfEvents?.map((sf, i) => (
-                <div key={i} className="sf-event">
+                <div key={i} className={`sf-event${sf.outOfWindow ? ' sf-event--warn' : ''}`}>
                   <span className="sf-time">{formatTime(sf.time)}</span>
                   <span>{sf.label}</span>
+                  {sf.outOfWindow && <span className="sf-warn-icon">⚠</span>}
                 </div>
               ))}
             </div>

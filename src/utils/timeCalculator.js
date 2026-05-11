@@ -3,6 +3,9 @@ export function getTempMultiplier(tempF) {
   return Math.pow(2, (75 - tempF) / 17);
 }
 
+// Steps that require you to physically be there
+const PRESENCE_REQUIRED = new Set(['manual', 'bake']);
+
 export const ACTIVITY_MULTIPLIERS = {
   very_active: 0.8,
   active: 1.0,
@@ -10,7 +13,7 @@ export const ACTIVITY_MULTIPLIERS = {
   sluggish: 1.6,
 };
 
-export function calculateSchedule(recipe, eatTime, { tempF, activity, proofType, coldRetardHours }) {
+export function calculateSchedule(recipe, eatTime, { tempF, activity, proofType, coldRetardHours, activeHours }) {
   const tempMult = getTempMultiplier(tempF);
   const actMult = ACTIVITY_MULTIPLIERS[activity] ?? 1.0;
 
@@ -65,7 +68,45 @@ export function calculateSchedule(recipe, eatTime, { tempF, activity, proofType,
     cursor = startMs;
   }
 
-  return timeline;
+  // Active-hours conflict detection
+  const conflicts = [];
+  let maxDelay   = 0; // minutes to push eat time later  (fixes too-early steps)
+  let maxAdvance = 0; // minutes to pull eat time earlier (fixes too-late steps)
+
+  if (activeHours) {
+    const { from, to } = activeHours;
+
+    const checkTime = (time, label, target) => {
+      const h = time.getHours() + time.getMinutes() / 60;
+      if (h < from) {
+        const diff = Math.ceil((from - h) * 60);
+        conflicts.push({ label, time, direction: 'too_early' });
+        target.outOfWindow = 'too_early';
+        if (diff > maxDelay) maxDelay = diff;
+      } else if (h >= to) {
+        const diff = Math.ceil((h - to) * 60);
+        conflicts.push({ label, time, direction: 'too_late' });
+        target.outOfWindow = 'too_late';
+        if (diff > maxAdvance) maxAdvance = diff;
+      }
+    };
+
+    for (const step of timeline) {
+      if (PRESENCE_REQUIRED.has(step.type)) {
+        checkTime(step.startTime, step.name || step.type, step);
+      }
+      if (step.sfEvents) {
+        for (const sf of step.sfEvents) {
+          checkTime(sf.time, sf.label, sf);
+        }
+      }
+    }
+  }
+
+  // Positive = delay eat time later; negative = move eat time earlier
+  const suggestedAdjustMinutes = maxDelay >= maxAdvance ? maxDelay : -maxAdvance;
+
+  return { timeline, conflicts, suggestedAdjustMinutes };
 }
 
 export function formatDuration(minutes) {

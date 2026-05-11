@@ -12,9 +12,11 @@ export default function BakesScreen({ active }) {
   const [recipes,          setRecipes]          = useState(() => getRecipes());
   const [editingRecipe,    setEditingRecipe]    = useState(null);
   const [schedulingRecipe, setSchedulingRecipe] = useState(null);
-  const [timeline,         setTimeline]         = useState(null);
-  const [timelineCriteria, setTimelineCriteria] = useState(null);
-  const [starterFeeds,     setStarterFeeds]     = useState([]);
+  const [timeline,              setTimeline]              = useState(null);
+  const [timelineCriteria,      setTimelineCriteria]      = useState(null);
+  const [timelineConflicts,     setTimelineConflicts]     = useState([]);
+  const [suggestedAdjustMinutes, setSuggestedAdjustMinutes] = useState(0);
+  const [starterFeeds,          setStarterFeeds]          = useState([]);
 
   const refreshRecipes = () => setRecipes(getRecipes());
 
@@ -48,8 +50,12 @@ export default function BakesScreen({ active }) {
           <ScheduleSetup
             recipe={schedulingRecipe}
             onCalculate={(eatTime, criteria, feeds) => {
-              setTimeline(calculateSchedule(schedulingRecipe, eatTime, criteria));
+              const { timeline, conflicts, suggestedAdjustMinutes } =
+                calculateSchedule(schedulingRecipe, eatTime, criteria);
+              setTimeline(timeline);
               setTimelineCriteria(criteria);
+              setTimelineConflicts(conflicts);
+              setSuggestedAdjustMinutes(suggestedAdjustMinutes);
               setStarterFeeds(feeds);
               setView('timeline');
             }}
@@ -62,6 +68,8 @@ export default function BakesScreen({ active }) {
             recipe={schedulingRecipe}
             timeline={timeline}
             criteria={timelineCriteria}
+            conflicts={timelineConflicts}
+            suggestedAdjustMinutes={suggestedAdjustMinutes}
             starterFeeds={starterFeeds}
             onBack={() => setView('schedule')}
             onBackToList={() => {

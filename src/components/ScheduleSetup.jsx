@@ -26,6 +26,13 @@ function defaultLastFed() {
 function celsiusToF(c) { return c * 9 / 5 + 32; }
 function fToCelsius(f) { return (f - 32) * 5 / 9; }
 
+function formatHour(h) {
+  if (h === 0)  return '12:00 AM';
+  if (h < 12)   return `${h}:00 AM`;
+  if (h === 12) return '12:00 PM';
+  return `${h - 12}:00 PM`;
+}
+
 function pctLabel(mult) {
   if (mult > 1) return `+${Math.round((mult - 1) * 100)}% longer`;
   if (mult < 1) return `${Math.round((1 - mult) * 100)}% shorter`;
@@ -39,6 +46,11 @@ export default function ScheduleSetup({ recipe, onCalculate, onBack }) {
   const [activity,    setActivity]    = useState('active');
   const [proofType,   setProofType]   = useState('room_temp');
   const [coldHours,   setColdHours]   = useState(12);
+
+  // Active hours
+  const [activeHoursEnabled, setActiveHoursEnabled] = useState(false);
+  const [activeFrom,          setActiveFrom]          = useState(6);
+  const [activeTo,            setActiveTo]            = useState(22);
 
   // Starter state
   const [includeStarter, setIncludeStarter] = useState(false);
@@ -103,7 +115,10 @@ export default function ScheduleSetup({ recipe, onCalculate, onBack }) {
     if (!eatTime) { alert('Please set your eat time.'); return; }
     onCalculate(
       new Date(eatTime),
-      { tempF, activity, proofType, coldRetardHours: coldHours },
+      {
+        tempF, activity, proofType, coldRetardHours: coldHours,
+        activeHours: activeHoursEnabled ? { from: activeFrom, to: activeTo } : null,
+      },
       includeStarter ? starterCalc?.feeds ?? [] : [],
     );
   };
@@ -347,6 +362,46 @@ export default function ScheduleSetup({ recipe, onCalculate, onBack }) {
                 ))}
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Active hours */}
+      <div className="card">
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={activeHoursEnabled}
+            onChange={e => setActiveHoursEnabled(e.target.checked)}
+            className="toggle-checkbox"
+          />
+          <div className={`toggle-switch ${activeHoursEnabled ? 'on' : ''}`} />
+          <div>
+            <div style={{ fontWeight: 600 }}>Set active hours</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Warn if any hands-on steps fall outside your available hours
+            </div>
+          </div>
+        </label>
+
+        {activeHoursEnabled && (
+          <div className="form-row" style={{ marginTop: 16 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Active from</label>
+              <select className="form-select" value={activeFrom} onChange={e => setActiveFrom(parseInt(e.target.value))}>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{formatHour(h)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Active until</label>
+              <select className="form-select" value={activeTo} onChange={e => setActiveTo(parseInt(e.target.value))}>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{formatHour(h)}</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
       </div>
