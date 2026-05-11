@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function RecipeList({ recipes, onNew, onEdit, onDelete, onUse }) {
+export default function RecipeList({ recipes, onNew, onEdit, onDelete, onUse, onShare }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const handleDelete = (id) => {
@@ -53,6 +53,7 @@ export default function RecipeList({ recipes, onNew, onEdit, onDelete, onUse }) 
                 <>
                   <button className="btn btn-secondary btn-sm" onClick={() => onEdit(recipe)}>Edit</button>
                   <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(recipe.id)}>Delete</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => onShare(recipe)}>Share</button>
                   <button className="btn btn-primary btn-sm" onClick={() => onUse(recipe)}>Schedule</button>
                 </>
               )}

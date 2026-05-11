@@ -7,6 +7,7 @@ import HomeScreen from './screens/HomeScreen.jsx';
 import CalendarScreen from './screens/CalendarScreen.jsx';
 import GalleryScreen from './screens/GalleryScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
+import StarterHealthScreen from './screens/StarterHealthScreen.jsx';
 import './App.css';
 
 function AppShell() {
@@ -28,10 +29,10 @@ function AppShell() {
     <div className="app">
       <div className="screen-container">
         <BakesScreen active={activeTab === 'bakes'} />
-        {activeTab === 'home'     && <HomeScreen onTabChange={setActiveTab} />}
-        {activeTab === 'calendar' && <CalendarScreen />}
-        {activeTab === 'gallery'  && <GalleryScreen />}
-        {activeTab === 'profile'  && <ProfileScreen />}
+        {activeTab === 'home'    && <HomeScreen onTabChange={setActiveTab} />}
+        {activeTab === 'starter' && <StarterHealthScreen />}
+        {activeTab === 'gallery' && <GalleryScreen />}
+        {activeTab === 'profile' && <ProfileScreen />}
       </div>
       <BottomNav active={activeTab} onChange={setActiveTab} />
     </div>

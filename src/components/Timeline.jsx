@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { supabase } from '../lib/supabase.js';
+import { generateId } from '../utils/uuid.js';
 import { TYPE_COLOR, TYPE_LABEL } from './RecipeBuilder.jsx';
 import { formatDuration, formatDateTime, formatTime } from '../utils/timeCalculator';
 
@@ -30,6 +33,72 @@ function TimelineRow({ time, dotColor, children, index = 0 }) {
   );
 }
 
+function ShareBakeButton({ recipe, timeline, userId, eatTime }) {
+  const [sharing, setSharing] = useState(false);
+  const [shared,  setShared]  = useState(false);
+  const [caption, setCaption] = useState('');
+  const [open,    setOpen]    = useState(false);
+
+  const handleShare = async () => {
+    setSharing(true);
+    const stepList = timeline
+      .map((s, i) => `${i + 1}. ${s.name || TYPE_LABEL[s.type]} — ${formatDuration(s.adjustedDuration)} @ ${formatTime(s.startTime)}`)
+      .join('\n');
+    const content = caption.trim()
+      ? `${caption.trim()}\n\n${stepList}`
+      : `Baking ${recipe.name} — here's my schedule:\n\n${stepList}`;
+    await supabase.from('posts').insert({
+      id: generateId(), user_id: userId, type: 'bake',
+      recipe_name: recipe.name, content,
+    });
+    setSharing(false);
+    setShared(true);
+    setTimeout(() => setOpen(false), 1500);
+  };
+
+  if (!userId) return null;
+
+  return (
+    <>
+      <button className="btn btn-secondary btn-full share-bake-btn" onClick={() => setOpen(true)}>
+        🍞 Share this bake to the feed
+      </button>
+      {open && (
+        <div className="modal-overlay" onClick={() => setOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            {shared ? (
+              <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🎉</div>
+                <h3>Shared!</h3>
+                <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>Your bake schedule is on the feed.</p>
+              </div>
+            ) : (
+              <>
+                <h3>Share to feed</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 14 }}>
+                  Post your {recipe.name} schedule so the community can see it.
+                </p>
+                <div className="form-group" style={{ marginBottom: 20 }}>
+                  <label className="form-label">Caption <span className="form-optional">(optional)</span></label>
+                  <textarea className="form-input form-textarea" rows={3}
+                    placeholder="How are you feeling about this bake?"
+                    value={caption} onChange={e => setCaption(e.target.value)} />
+                </div>
+                <div className="modal-actions">
+                  <button className="btn btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleShare} disabled={sharing}>
+                    {sharing ? 'Sharing…' : 'Share'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function formatHour(h) {
   if (h === 0)  return '12 AM';
   if (h < 12)   return `${h} AM`;
@@ -37,7 +106,7 @@ function formatHour(h) {
   return `${h - 12} PM`;
 }
 
-export default function Timeline({ recipe, timeline, criteria, conflicts, suggestedAdjustMinutes, starterFeeds, onBack, onBackToList }) {
+export default function Timeline({ recipe, timeline, criteria, conflicts, suggestedAdjustMinutes, starterFeeds, userId, onBack, onBackToList }) {
   const { tempF, activity, proofType, coldRetardHours, activeHours } = criteria;
   const tempC = Math.round((tempF - 32) * 5 / 9);
 
@@ -170,6 +239,8 @@ export default function Timeline({ recipe, timeline, criteria, conflicts, sugges
           </div>
         </div>
       </div>
+
+      <ShareBakeButton recipe={recipe} timeline={timeline} userId={userId} eatTime={eatTime} />
 
       <div className="timeline-actions">
         <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onBackToList}>

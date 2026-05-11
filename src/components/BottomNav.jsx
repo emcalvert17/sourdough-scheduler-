@@ -1,9 +1,9 @@
 const TABS = [
-  { id: 'home',     label: 'Feed',     icon: FeedIcon     },
-  { id: 'bakes',    label: 'Bakes',    icon: BakesIcon    },
-  { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
-  { id: 'gallery',  label: 'Gallery',  icon: GalleryIcon  },
-  { id: 'profile',  label: 'Profile',  icon: ProfileIcon  },
+  { id: 'home',    label: 'Feed',    icon: FeedIcon    },
+  { id: 'bakes',   label: 'Bakes',   icon: BakesIcon   },
+  { id: 'starter', label: 'Starter', icon: StarterIcon },
+  { id: 'gallery', label: 'Gallery', icon: GalleryIcon },
+  { id: 'profile', label: 'Profile', icon: ProfileIcon },
 ];
 
 export default function BottomNav({ active, onChange }) {
@@ -63,6 +63,15 @@ function GalleryIcon({ active }) {
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <circle cx="8.5" cy="8.5" r="1.5" />
       <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
+
+function StarterIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" strokeLinecap="round" />
     </svg>
   );
 }

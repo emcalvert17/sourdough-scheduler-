@@ -1,25 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { compressImage } from '../utils/photoStorage.js';
 import { getBakeLog, getBakeStreak } from '../utils/bakeLog.js';
 import { getRecipes } from '../utils/storage.js';
 
-function Avatar({ displayName, avatarUrl, size = 44 }) {
+function Avatar({ displayName, avatarUrl, size = 44, onClick }) {
   const initials = (displayName || '?').slice(0, 2).toUpperCase();
-  if (avatarUrl) {
-    return <img className="avatar" src={avatarUrl} alt={displayName}
-      style={{ width: size, height: size, objectFit: 'cover' }} />;
-  }
-  return (
-    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.36 }}>
-      {initials}
-    </div>
-  );
+  const style = { width: size, height: size, fontSize: size * 0.36, cursor: onClick ? 'pointer' : 'default' };
+  if (avatarUrl) return <img className="avatar" src={avatarUrl} alt={displayName} style={{ ...style, objectFit: 'cover' }} onClick={onClick} />;
+  return <div className="avatar" style={style} onClick={onClick}>{initials}</div>;
 }
 
-function StatBlock({ label, value, onClick }) {
+function StatBlock({ label, value }) {
   return (
-    <div className={`stat-block${onClick ? ' stat-block--clickable' : ''}`} onClick={onClick}>
+    <div className="stat-block">
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
     </div>
@@ -36,18 +31,66 @@ function UserCard({ profile, isFollowing, onToggle, disabled }) {
         {profile.starter_name && <div className="friend-card-bio">Starter: {profile.starter_name}</div>}
         {profile.bio && <div className="friend-card-bio">{profile.bio}</div>}
       </div>
-      <button
-        className={`btn btn-sm ${isFollowing ? 'btn-ghost' : 'btn-secondary'}`}
-        onClick={onToggle}
-        disabled={disabled}
-      >
+      <button className={`btn btn-sm ${isFollowing ? 'btn-ghost' : 'btn-secondary'}`} onClick={onToggle} disabled={disabled}>
         {isFollowing ? 'Following' : 'Follow'}
       </button>
     </div>
   );
 }
 
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3600_000);
+  if (h < 1) return 'just now';
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function SavedPostsSection({ userId }) {
+  const [posts,   setPosts]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from('saves')
+      .select('post_id, posts(id, type, content, image_url, recipe_name, created_at, profiles(display_name))')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setPosts((data || []).map(s => s.posts).filter(Boolean));
+        setLoading(false);
+      });
+  }, [userId]);
+
+  if (loading) return <div className="field-hint" style={{ padding: '16px 0' }}>Loading saved posts…</div>;
+  if (posts.length === 0) return (
+    <div className="feed-empty" style={{ padding: '24px 0' }}>
+      <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🔖</div>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>No saved posts yet</div>
+      <div className="field-hint">Tap the bookmark icon on any post to save it here</div>
+    </div>
+  );
+
+  return (
+    <div className="saved-posts-grid">
+      {posts.map(p => (
+        <div key={p.id} className="saved-post-card">
+          {p.image_url
+            ? <img src={p.image_url} alt="" className="saved-post-img" loading="lazy" />
+            : <div className="saved-post-text">
+                <span className={`feed-tag feed-tag--${p.type}`} style={{ marginBottom: 6 }}>{p.type}</span>
+                <p>{p.recipe_name || (p.content.length > 50 ? p.content.slice(0, 50) + '…' : p.content)}</p>
+              </div>
+          }
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EditProfileModal({ profile, onClose, onSave }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     display_name: profile?.display_name || '',
     username:     profile?.username     || '',
@@ -55,23 +98,47 @@ function EditProfileModal({ profile, onClose, onSave }) {
     location:     profile?.location     || '',
     bio:          profile?.bio          || '',
   });
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url || null);
+  const [avatarFile,    setAvatarFile]    = useState(null); // compressed data URL
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState('');
+  const fileRef = useRef(null);
+
+  const handleAvatarFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, 400, 0.88);
+      setAvatarPreview(compressed);
+      setAvatarFile(compressed);
+    } catch { alert('Could not process image.'); }
+    e.target.value = '';
+  };
 
   const handleSave = async () => {
     if (!form.display_name.trim()) { setError('Name is required.'); return; }
     setLoading(true);
-    const { error: err } = await supabase
-      .from('profiles')
-      .update({
-        display_name: form.display_name.trim(),
-        username:     form.username.trim().toLowerCase().replace(/\s+/g, '_'),
-        starter_name: form.starter_name.trim() || null,
-        location:     form.location.trim()     || null,
-        bio:          form.bio.trim()           || null,
-        updated_at:   new Date().toISOString(),
-      })
-      .eq('id', profile.id);
+
+    let avatar_url = profile?.avatar_url || null;
+    if (avatarFile) {
+      try {
+        const blob = await fetch(avatarFile).then(r => r.blob());
+        const path = `avatars/${user.id}.jpg`;
+        await supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+        avatar_url = publicUrl + `?t=${Date.now()}`;
+      } catch (e) { console.error('Avatar upload failed:', e); }
+    }
+
+    const { error: err } = await supabase.from('profiles').update({
+      display_name: form.display_name.trim(),
+      username:     form.username.trim().toLowerCase().replace(/\s+/g, '_'),
+      starter_name: form.starter_name.trim() || null,
+      location:     form.location.trim()     || null,
+      bio:          form.bio.trim()           || null,
+      avatar_url,
+      updated_at:   new Date().toISOString(),
+    }).eq('id', profile.id);
 
     if (err) { setError(err.message); setLoading(false); return; }
     onSave();
@@ -83,6 +150,16 @@ function EditProfileModal({ profile, onClose, onSave }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h3>Edit Profile</h3>
         {error && <div className="auth-error" style={{ marginBottom: 12 }}>{error}</div>}
+
+        <div className="avatar-upload-row">
+          <div className="avatar-upload-wrap" onClick={() => fileRef.current?.click()}>
+            <Avatar displayName={form.display_name} avatarUrl={avatarPreview} size={72} />
+            <div className="avatar-upload-overlay">📷</div>
+          </div>
+          <span className="field-hint">Tap to change photo</span>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarFile} />
+
         <div className="form-group">
           <label className="form-label">Display Name</label>
           <input className="form-input" value={form.display_name}
@@ -121,41 +198,33 @@ function EditProfileModal({ profile, onClose, onSave }) {
 
 export default function ProfileScreen() {
   const { user, profile, refreshProfile } = useAuth();
-
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [discoverUsers,  setDiscoverUsers]  = useState([]);
   const [followingSet,   setFollowingSet]   = useState(new Set());
   const [searchQuery,    setSearchQuery]    = useState('');
-  const [searchResults,  setSearchResults]  = useState(null); // null = no search yet
+  const [searchResults,  setSearchResults]  = useState(null);
   const [toggling,       setToggling]       = useState(new Set());
   const [showEdit,       setShowEdit]       = useState(false);
+  const [activeSection,  setActiveSection]  = useState('discover'); // 'discover' | 'saved'
 
-  const bakeLog  = getBakeLog();
-  const streak   = getBakeStreak();
-  const recipes  = getRecipes();
+  const bakeLog = getBakeLog();
+  const streak  = getBakeStreak();
+  const recipes = getRecipes();
 
   const loadSocial = useCallback(async () => {
     if (!user) return;
-
     const [{ count: fc }, { count: fgc }, { data: following }, { data: discover }] = await Promise.all([
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
       supabase.from('profiles').select('*').neq('id', user.id).limit(20),
     ]);
-
     setFollowersCount(fc ?? 0);
     setFollowingCount(fgc ?? 0);
-
     const fSet = new Set((following || []).map(r => r.following_id));
     setFollowingSet(fSet);
-
-    // show people you're not following first
-    const sorted = (discover || []).sort((a, b) =>
-      (fSet.has(a.id) ? 1 : 0) - (fSet.has(b.id) ? 1 : 0)
-    );
-    setDiscoverUsers(sorted);
+    setDiscoverUsers((discover || []).sort((a, b) => (fSet.has(a.id) ? 1 : 0) - (fSet.has(b.id) ? 1 : 0)));
   }, [user]);
 
   useEffect(() => { loadSocial(); }, [loadSocial]);
@@ -163,19 +232,14 @@ export default function ProfileScreen() {
   const handleSearch = async (q) => {
     setSearchQuery(q);
     if (!q.trim()) { setSearchResults(null); return; }
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
-      .neq('id', user.id)
-      .limit(20);
+    const { data } = await supabase.from('profiles').select('*')
+      .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`).neq('id', user.id).limit(20);
     setSearchResults(data || []);
   };
 
   const handleToggleFollow = async (targetId) => {
     if (toggling.has(targetId)) return;
     setToggling(prev => new Set(prev).add(targetId));
-
     const isFollowing = followingSet.has(targetId);
     if (isFollowing) {
       await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
@@ -183,15 +247,11 @@ export default function ProfileScreen() {
       setFollowingCount(c => Math.max(0, c - 1));
     } else {
       await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
+      await supabase.from('notifications').insert({ recipient_id: targetId, actor_id: user.id, type: 'follow' }).then(() => {});
       setFollowingSet(prev => new Set(prev).add(targetId));
       setFollowingCount(c => c + 1);
     }
-
     setToggling(prev => { const s = new Set(prev); s.delete(targetId); return s; });
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
   };
 
   const displayUsers = searchResults !== null ? searchResults : discoverUsers;
@@ -202,66 +262,60 @@ export default function ProfileScreen() {
         <span className="screen-title">Profile</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowEdit(true)}>Edit</button>
-          <button className="btn btn-ghost btn-sm" onClick={handleSignOut}>Sign out</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>
       </div>
 
       <div className="profile-hero">
-        <Avatar displayName={profile?.display_name} avatarUrl={profile?.avatar_url} size={64} />
+        <Avatar displayName={profile?.display_name} avatarUrl={profile?.avatar_url} size={64}
+          onClick={() => setShowEdit(true)} />
         <div className="profile-hero-info">
           <div className="profile-name">{profile?.display_name || 'Unnamed Baker'}</div>
           <div className="profile-handle">@{profile?.username}</div>
-          {profile?.location    && <div className="profile-location">{profile.location}</div>}
+          {profile?.location     && <div className="profile-location">{profile.location}</div>}
           {profile?.starter_name && <div className="profile-location">Starter: <strong>{profile.starter_name}</strong></div>}
-          {profile?.bio         && <div className="profile-bio">{profile.bio}</div>}
+          {profile?.bio          && <div className="profile-bio">{profile.bio}</div>}
         </div>
       </div>
 
       <div className="stats-row">
-        <StatBlock label="Followers"   value={followersCount} />
-        <StatBlock label="Following"   value={followingCount} />
-        <StatBlock label="Bakes"       value={bakeLog.length} />
-        <StatBlock label="Recipes"     value={recipes.length} />
-        <StatBlock label="Day streak"  value={streak} />
+        <StatBlock label="Followers"  value={followersCount} />
+        <StatBlock label="Following"  value={followingCount} />
+        <StatBlock label="Bakes"      value={bakeLog.length} />
+        <StatBlock label="Recipes"    value={recipes.length} />
+        <StatBlock label="Streak"     value={streak} />
       </div>
 
-      <div className="section-title" style={{ marginTop: 28, marginBottom: 12 }}>Find Bakers</div>
-      <div className="search-row">
-        <input
-          className="form-input search-input"
-          placeholder="Search by name or username…"
-          value={searchQuery}
-          onChange={e => handleSearch(e.target.value)}
-        />
-        {searchQuery && (
-          <button className="btn btn-ghost btn-sm" onClick={() => { setSearchQuery(''); setSearchResults(null); }}>
-            Clear
-          </button>
-        )}
+      <div className="profile-section-tabs">
+        <button className={`profile-section-tab${activeSection === 'discover' ? ' active' : ''}`}
+          onClick={() => setActiveSection('discover')}>Find Bakers</button>
+        <button className={`profile-section-tab${activeSection === 'saved' ? ' active' : ''}`}
+          onClick={() => setActiveSection('saved')}>Saved Posts</button>
       </div>
 
-      <div className="friends-list">
-        {displayUsers.length === 0 && searchResults !== null ? (
-          <div className="feed-empty" style={{ padding: '24px 0' }}>No bakers found for "{searchQuery}"</div>
-        ) : (
-          displayUsers.map(u => (
-            <UserCard
-              key={u.id}
-              profile={u}
-              isFollowing={followingSet.has(u.id)}
-              onToggle={() => handleToggleFollow(u.id)}
-              disabled={toggling.has(u.id)}
-            />
-          ))
-        )}
-      </div>
+      {activeSection === 'discover' ? (
+        <>
+          <div className="search-row" style={{ marginTop: 12 }}>
+            <input className="form-input search-input" placeholder="Search by name or username…"
+              value={searchQuery} onChange={e => handleSearch(e.target.value)} />
+            {searchQuery && <button className="btn btn-ghost btn-sm" onClick={() => { setSearchQuery(''); setSearchResults(null); }}>Clear</button>}
+          </div>
+          <div className="friends-list">
+            {displayUsers.length === 0 && searchResults !== null
+              ? <div className="feed-empty" style={{ padding: '24px 0' }}>No bakers found for "{searchQuery}"</div>
+              : displayUsers.map(u => (
+                  <UserCard key={u.id} profile={u} isFollowing={followingSet.has(u.id)}
+                    onToggle={() => handleToggleFollow(u.id)} disabled={toggling.has(u.id)} />
+                ))
+            }
+          </div>
+        </>
+      ) : (
+        <SavedPostsSection userId={user.id} />
+      )}
 
       {showEdit && profile && (
-        <EditProfileModal
-          profile={profile}
-          onClose={() => setShowEdit(false)}
-          onSave={refreshProfile}
-        />
+        <EditProfileModal profile={profile} onClose={() => setShowEdit(false)} onSave={refreshProfile} />
       )}
     </div>
   );

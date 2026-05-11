@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { compressImage } from '../utils/photoStorage.js';
 import { generateId } from '../utils/uuid.js';
 import UserProfileModal from '../components/UserProfileModal.jsx';
+import NotificationsPanel from '../components/NotificationsPanel.jsx';
 
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -17,9 +18,7 @@ function timeAgo(iso) {
 function Avatar({ displayName, avatarUrl, size = 38, onClick }) {
   const initials = (displayName || '?').slice(0, 2).toUpperCase();
   const style = { width: size, height: size, fontSize: size * 0.38, cursor: onClick ? 'pointer' : 'default' };
-  if (avatarUrl) {
-    return <img className="avatar" src={avatarUrl} alt={displayName} style={{ ...style, objectFit: 'cover' }} onClick={onClick} />;
-  }
+  if (avatarUrl) return <img className="avatar" src={avatarUrl} alt={displayName} style={{ ...style, objectFit: 'cover' }} onClick={onClick} />;
   return <div className="avatar" style={style} onClick={onClick}>{initials}</div>;
 }
 
@@ -27,6 +26,14 @@ function HeartIcon({ filled }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
@@ -47,6 +54,15 @@ function ScheduleIcon() {
   );
 }
 
+function BellIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
 function CommentRow({ comment }) {
   const p = comment.profiles;
   return (
@@ -61,7 +77,7 @@ function CommentRow({ comment }) {
   );
 }
 
-function CreatePostModal({ onClose, onPost, currentProfile }) {
+function CreatePostModal({ onClose, onPost }) {
   const [type,         setType]         = useState('bake');
   const [content,      setContent]      = useState('');
   const [recipeName,   setRecipeName]   = useState('');
@@ -74,15 +90,9 @@ function CreatePostModal({ onClose, onPost, currentProfile }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setImgLoading(true);
-    try {
-      const compressed = await compressImage(file);
-      setImagePreview(compressed);
-    } catch {
-      alert('Could not process image.');
-    } finally {
-      setImgLoading(false);
-      e.target.value = '';
-    }
+    try { setImagePreview(await compressImage(file)); }
+    catch { alert('Could not process image.'); }
+    finally { setImgLoading(false); e.target.value = ''; }
   };
 
   const handleSubmit = async () => {
@@ -97,12 +107,10 @@ function CreatePostModal({ onClose, onPost, currentProfile }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h3>Share with the community</h3>
-
         <div className="post-type-toggle">
           <button className={`post-type-btn${type === 'bake' ? ' active' : ''}`} onClick={() => setType('bake')}>🍞 Bake</button>
           <button className={`post-type-btn${type === 'tip'  ? ' active' : ''}`} onClick={() => setType('tip')}>💡 Tip</button>
         </div>
-
         {type === 'bake' && (
           <div className="form-group">
             <label className="form-label">Recipe name <span className="form-optional">(optional)</span></label>
@@ -110,18 +118,12 @@ function CreatePostModal({ onClose, onPost, currentProfile }) {
               value={recipeName} onChange={e => setRecipeName(e.target.value)} />
           </div>
         )}
-
         <div className="form-group">
           <label className="form-label">{type === 'bake' ? 'How did the bake go?' : 'Share your tip'}</label>
-          <textarea
-            className="form-input form-textarea"
+          <textarea className="form-input form-textarea"
             placeholder={type === 'bake' ? 'Oven spring, crumb, crust — tell us everything!' : 'What sourdough wisdom would you pass on?'}
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={4}
-          />
+            value={content} onChange={e => setContent(e.target.value)} rows={4} />
         </div>
-
         {imagePreview ? (
           <div className="post-image-preview">
             <img src={imagePreview} alt="Preview" />
@@ -133,7 +135,6 @@ function CreatePostModal({ onClose, onPost, currentProfile }) {
           </button>
         )}
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
-
         <div className="modal-actions" style={{ marginTop: 16 }}>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !content.trim()}>
@@ -145,12 +146,15 @@ function CreatePostModal({ onClose, onPost, currentProfile }) {
   );
 }
 
-function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
+function PostCard({ post, currentUserId, currentProfile, onTabChange, onDeleted }) {
   const postProfile = post.profiles;
+  const isOwn = postProfile?.id === currentUserId;
 
-  const [liked,      setLiked]      = useState(() => post.user_liked);
-  const [likeCount,  setLikeCount]  = useState(post.likes_count ?? 0);
-  const [liking,     setLiking]     = useState(false);
+  const [liked,         setLiked]         = useState(() => post.user_liked);
+  const [likeCount,     setLikeCount]     = useState(post.likes_count ?? 0);
+  const [saved,         setSaved]         = useState(() => post.user_saved);
+  const [liking,        setLiking]        = useState(false);
+  const [saving,        setSaving]        = useState(false);
 
   const [showComments,   setShowComments]   = useState(false);
   const [comments,       setComments]       = useState([]);
@@ -159,6 +163,8 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
   const [commentInput,   setCommentInput]   = useState('');
   const [sending,        setSending]        = useState(false);
 
+  const [showMenu,       setShowMenu]       = useState(false);
+  const [deleting,       setDeleting]       = useState(false);
   const [viewingProfile, setViewingProfile] = useState(null);
 
   const handleLike = async () => {
@@ -169,10 +175,35 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
     setLikeCount(c => nowLiked ? c + 1 : c - 1);
     if (nowLiked) {
       await supabase.from('likes').insert({ user_id: currentUserId, post_id: post.id });
+      if (postProfile?.id !== currentUserId) {
+        await supabase.from('notifications').insert({
+          recipient_id: postProfile.id, actor_id: currentUserId, type: 'like', post_id: post.id,
+        }).then(() => {});
+      }
     } else {
       await supabase.from('likes').delete().eq('user_id', currentUserId).eq('post_id', post.id);
     }
     setLiking(false);
+  };
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    const nowSaved = !saved;
+    setSaved(nowSaved);
+    if (nowSaved) {
+      await supabase.from('saves').insert({ user_id: currentUserId, post_id: post.id });
+    } else {
+      await supabase.from('saves').delete().eq('user_id', currentUserId).eq('post_id', post.id);
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this post?')) return;
+    setDeleting(true);
+    await supabase.from('posts').delete().eq('id', post.id);
+    onDeleted(post.id);
   };
 
   const toggleComments = async () => {
@@ -201,12 +232,17 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
     if (data) {
       setComments(prev => [...prev, data]);
       setCommentCount(c => c + 1);
+      if (postProfile?.id !== currentUserId) {
+        await supabase.from('notifications').insert({
+          recipient_id: postProfile.id, actor_id: currentUserId, type: 'comment', post_id: post.id,
+        }).then(() => {});
+      }
     }
     setSending(false);
   };
 
   return (
-    <div className={`feed-card${post.type === 'tip' ? ' feed-card--tip' : ''}`}>
+    <div className={`feed-card${post.type === 'tip' ? ' feed-card--tip' : ''}${deleting ? ' feed-card--deleting' : ''}`}>
       <div className="feed-card-header">
         <div className="feed-header-clickable" onClick={() => setViewingProfile(postProfile?.id)}>
           <Avatar displayName={postProfile?.display_name} avatarUrl={postProfile?.avatar_url} />
@@ -215,9 +251,21 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
             <span className="feed-card-sub">@{postProfile?.username} · {timeAgo(post.created_at)}</span>
           </div>
         </div>
-        <span className={`feed-tag feed-tag--${post.type}`}>
-          {post.type === 'bake' ? 'Bake' : 'Tip'}
-        </span>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span className={`feed-tag feed-tag--${post.type}`}>{post.type === 'bake' ? 'Bake' : 'Tip'}</span>
+          {isOwn && (
+            <div style={{ position: 'relative' }}>
+              <button className="btn btn-icon btn-ghost post-menu-btn" onClick={() => setShowMenu(s => !s)}>⋯</button>
+              {showMenu && (
+                <div className="post-menu-dropdown" onClick={() => setShowMenu(false)}>
+                  <button className="post-menu-item post-menu-item--danger" onClick={handleDelete}>
+                    Delete post
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {post.image_url && (
@@ -233,17 +281,17 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
 
       <div className="feed-card-actions">
         <button className={`feed-action-btn${liked ? ' active' : ''}`} onClick={handleLike}>
-          <HeartIcon filled={liked} />
-          <span>{likeCount > 0 ? likeCount : 'Like'}</span>
+          <HeartIcon filled={liked} /><span>{likeCount > 0 ? likeCount : 'Like'}</span>
         </button>
         <button className={`feed-action-btn${showComments ? ' active' : ''}`} onClick={toggleComments}>
-          <CommentIcon />
-          <span>{commentCount > 0 ? commentCount : 'Comment'}</span>
+          <CommentIcon /><span>{commentCount > 0 ? commentCount : 'Comment'}</span>
+        </button>
+        <button className={`feed-action-btn${saved ? ' active saved' : ''}`} onClick={handleSave}>
+          <BookmarkIcon filled={saved} /><span>{saved ? 'Saved' : 'Save'}</span>
         </button>
         {post.type === 'bake' && (
           <button className="feed-action-btn" onClick={() => onTabChange('bakes')}>
-            <ScheduleIcon />
-            <span>Schedule</span>
+            <ScheduleIcon /><span>Schedule</span>
           </button>
         )}
       </div>
@@ -256,30 +304,17 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
           {comments.map(c => <CommentRow key={c.id} comment={c} />)}
           <div className="comment-input-row">
             <Avatar displayName={currentProfile?.display_name} avatarUrl={currentProfile?.avatar_url} size={28} />
-            <input
-              className="comment-input"
-              placeholder="Add a comment…"
-              value={commentInput}
-              onChange={e => setCommentInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment()}
-            />
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={submitComment}
-              disabled={!commentInput.trim() || sending}
-            >
-              {sending ? '…' : 'Post'}
-            </button>
+            <input className="comment-input" placeholder="Add a comment…"
+              value={commentInput} onChange={e => setCommentInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submitComment()} />
+            <button className="btn btn-primary btn-sm" onClick={submitComment}
+              disabled={!commentInput.trim() || sending}>{sending ? '…' : 'Post'}</button>
           </div>
         </div>
       )}
 
       {viewingProfile && viewingProfile !== currentUserId && (
-        <UserProfileModal
-          userId={viewingProfile}
-          currentUserId={currentUserId}
-          onClose={() => setViewingProfile(null)}
-        />
+        <UserProfileModal userId={viewingProfile} currentUserId={currentUserId} onClose={() => setViewingProfile(null)} />
       )}
     </div>
   );
@@ -287,107 +322,133 @@ function PostCard({ post, currentUserId, currentProfile, onTabChange }) {
 
 export default function HomeScreen({ onTabChange }) {
   const { user, profile } = useAuth();
-  const [posts,      setPosts]      = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  const [posts,              setPosts]              = useState([]);
+  const [loading,            setLoading]            = useState(true);
+  const [feedMode,           setFeedMode]           = useState('discover');
+  const [showCreate,         setShowCreate]         = useState(false);
+  const [showNotifications,  setShowNotifications]  = useState(false);
+  const [unreadCount,        setUnreadCount]        = useState(0);
 
-  const loadFeed = useCallback(async () => {
+  const loadUnreadCount = useCallback(async () => {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', user.id)
+      .eq('read', false);
+    setUnreadCount(count ?? 0);
+  }, [user.id]);
+
+  const loadFeed = useCallback(async (mode) => {
     setLoading(true);
-    const { data: postsData } = await supabase
+
+    let query = supabase
       .from('posts')
       .select('*, profiles(id, username, display_name, avatar_url)')
       .order('created_at', { ascending: false })
       .limit(50);
 
+    if (mode === 'following') {
+      const { data: followingData } = await supabase
+        .from('follows').select('following_id').eq('follower_id', user.id);
+      const ids = [...(followingData || []).map(f => f.following_id), user.id];
+      query = query.in('user_id', ids);
+    }
+
+    const { data: postsData } = await query;
     if (!postsData) { setLoading(false); return; }
 
-    const { data: myLikes } = await supabase
-      .from('likes')
-      .select('post_id')
-      .eq('user_id', user.id);
+    const [{ data: myLikes }, { data: mySaves }] = await Promise.all([
+      supabase.from('likes').select('post_id').eq('user_id', user.id),
+      supabase.from('saves').select('post_id').eq('user_id', user.id),
+    ]);
 
     const likedSet = new Set((myLikes || []).map(l => l.post_id));
-    setPosts(postsData.map(p => ({ ...p, user_liked: likedSet.has(p.id) })));
+    const savedSet = new Set((mySaves || []).map(s => s.post_id));
+    setPosts(postsData.map(p => ({ ...p, user_liked: likedSet.has(p.id), user_saved: savedSet.has(p.id) })));
     setLoading(false);
   }, [user.id]);
 
-  useEffect(() => { loadFeed(); }, [loadFeed]);
+  useEffect(() => { loadFeed(feedMode); }, [feedMode, loadFeed]);
+  useEffect(() => { loadUnreadCount(); }, [loadUnreadCount]);
 
   const handlePost = async ({ type, content, recipe_name, imagePreview }) => {
     const postId = generateId();
     let image_url = null;
-
     if (imagePreview) {
       try {
-        const res  = await fetch(imagePreview);
-        const blob = await res.blob();
-        const { error: upErr } = await supabase.storage
-          .from('post-images')
-          .upload(`posts/${postId}.jpg`, blob, { contentType: 'image/jpeg' });
+        const blob = await fetch(imagePreview).then(r => r.blob());
+        const { error: upErr } = await supabase.storage.from('post-images').upload(`posts/${postId}.jpg`, blob, { contentType: 'image/jpeg' });
         if (!upErr) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('post-images')
-            .getPublicUrl(`posts/${postId}.jpg`);
+          const { data: { publicUrl } } = supabase.storage.from('post-images').getPublicUrl(`posts/${postId}.jpg`);
           image_url = publicUrl;
         }
-      } catch (e) {
-        console.error('Image upload failed:', e);
-      }
+      } catch (e) { console.error('Image upload failed:', e); }
     }
-
     const { data, error } = await supabase
       .from('posts')
       .insert({ id: postId, user_id: user.id, type, content, recipe_name, image_url })
       .select('*, profiles(id, username, display_name, avatar_url)')
       .single();
-
-    if (!error && data) {
-      setPosts(prev => [{ ...data, user_liked: false, comments_count: 0 }, ...prev]);
-    }
+    if (!error && data) setPosts(prev => [{ ...data, user_liked: false, user_saved: false, comments_count: 0 }, ...prev]);
   };
+
+  const handleDeleted = (postId) => setPosts(prev => prev.filter(p => p.id !== postId));
+
+  const handleOpenNotifications = () => {
+    setShowNotifications(true);
+    setUnreadCount(0);
+    supabase.from('notifications').update({ read: true }).eq('recipient_id', user.id).eq('read', false).then(() => {});
+  };
+
+  const emptyFollowing = feedMode === 'following' && !loading && posts.length === 0;
 
   return (
     <div className="screen home-screen">
       <div className="screen-header">
         <span className="screen-title-brand">StarterSync</span>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>+ Share</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn btn-ghost btn-icon notif-btn" onClick={handleOpenNotifications}>
+            <BellIcon />
+            {unreadCount > 0 && <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>+ Share</button>
+        </div>
+      </div>
+
+      <div className="feed-mode-toggle">
+        <button className={`feed-mode-btn${feedMode === 'discover'   ? ' active' : ''}`} onClick={() => setFeedMode('discover')}>Discover</button>
+        <button className={`feed-mode-btn${feedMode === 'following'  ? ' active' : ''}`} onClick={() => setFeedMode('following')}>Following</button>
       </div>
 
       {loading ? (
-        <div className="feed-loading">
-          {[1, 2, 3].map(i => <div key={i} className="feed-skeleton" />)}
+        <div className="feed-loading">{[1,2,3].map(i => <div key={i} className="feed-skeleton" />)}</div>
+      ) : emptyFollowing ? (
+        <div className="feed-empty">
+          <div className="feed-empty-icon">👋</div>
+          <div className="feed-empty-title">No posts from people you follow yet</div>
+          <div className="feed-empty-sub">Find bakers to follow on your Profile tab</div>
+          <button className="btn btn-ghost" style={{ marginTop: 16 }} onClick={() => setFeedMode('discover')}>Browse Discover</button>
         </div>
       ) : posts.length === 0 ? (
         <div className="feed-empty">
           <div className="feed-empty-icon">🍞</div>
           <div className="feed-empty-title">No posts yet</div>
           <div className="feed-empty-sub">Be the first to share a bake!</div>
-          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowCreate(true)}>
-            Share your first bake
-          </button>
+          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowCreate(true)}>Share your first bake</button>
         </div>
       ) : (
         <div className="feed">
           {posts.map((post, i) => (
             <div key={post.id} style={{ '--i': i }} className="feed-item-enter">
-              <PostCard
-                post={post}
-                currentUserId={user.id}
-                currentProfile={profile}
-                onTabChange={onTabChange}
-              />
+              <PostCard post={post} currentUserId={user.id} currentProfile={profile}
+                onTabChange={onTabChange} onDeleted={handleDeleted} />
             </div>
           ))}
         </div>
       )}
 
-      {showCreate && (
-        <CreatePostModal
-          onClose={() => setShowCreate(false)}
-          onPost={handlePost}
-          currentProfile={profile}
-        />
-      )}
+      {showCreate && <CreatePostModal onClose={() => setShowCreate(false)} onPost={handlePost} />}
+      {showNotifications && <NotificationsPanel userId={user.id} onClose={() => setShowNotifications(false)} />}
     </div>
   );
 }
