@@ -50,7 +50,7 @@ export default function NotificationsPanel({ userId, onClose }) {
         .select(`
           *,
           actor:profiles!notifications_actor_id_fkey(id, display_name, avatar_url),
-          post:posts(id, recipe_name, content)
+          post:posts!notifications_post_id_fkey(id, recipe_name, content)
         `)
         .eq('recipient_id', userId)
         .order('created_at', { ascending: false })

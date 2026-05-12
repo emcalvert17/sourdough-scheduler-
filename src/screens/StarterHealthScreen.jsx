@@ -215,7 +215,7 @@ export default function StarterHealthScreen() {
             return (
               <div key={entry.id} className="starter-log-row">
                 <div className="starter-log-activity" style={{ background: level?.color + '22', color: level?.color }}>
-                  {level?.emoji} {level?.label}
+                  {level?.label}
                 </div>
                 <div className="starter-log-details">
                   <div className="starter-log-date">{formatDate(entry.fedAt)} at {formatTime(entry.fedAt)}</div>

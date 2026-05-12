@@ -34,26 +34,32 @@ function TimelineRow({ time, dotColor, children, index = 0 }) {
 }
 
 function ShareBakeButton({ recipe, timeline, userId, eatTime }) {
-  const [sharing, setSharing] = useState(false);
-  const [shared,  setShared]  = useState(false);
-  const [caption, setCaption] = useState('');
-  const [open,    setOpen]    = useState(false);
+  const [sharing,      setSharing]      = useState(false);
+  const [shared,       setShared]       = useState(false);
+  const [shareError,   setShareError]   = useState(null);
+  const [caption,      setCaption]      = useState('');
+  const [open,         setOpen]         = useState(false);
 
   const handleShare = async () => {
     setSharing(true);
+    setShareError(null);
     const stepList = timeline
       .map((s, i) => `${i + 1}. ${s.name || TYPE_LABEL[s.type]} — ${formatDuration(s.adjustedDuration)} @ ${formatTime(s.startTime)}`)
       .join('\n');
     const content = caption.trim()
       ? `${caption.trim()}\n\n${stepList}`
       : `Baking ${recipe.name} — here's my schedule:\n\n${stepList}`;
-    await supabase.from('posts').insert({
+    const { error } = await supabase.from('posts').insert({
       id: generateId(), user_id: userId, type: 'bake',
       recipe_name: recipe.name, content,
     });
     setSharing(false);
-    setShared(true);
-    setTimeout(() => setOpen(false), 1500);
+    if (error) {
+      setShareError('Failed to share. Please try again.');
+    } else {
+      setShared(true);
+      setTimeout(() => setOpen(false), 1500);
+    }
   };
 
   if (!userId) return null;
@@ -83,6 +89,9 @@ function ShareBakeButton({ recipe, timeline, userId, eatTime }) {
                     placeholder="How are you feeling about this bake?"
                     value={caption} onChange={e => setCaption(e.target.value)} />
                 </div>
+                {shareError && (
+                  <p style={{ color: 'var(--danger, #c05a3a)', fontSize: '0.82rem', marginBottom: 12 }}>{shareError}</p>
+                )}
                 <div className="modal-actions">
                   <button className="btn btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
                   <button className="btn btn-primary" onClick={handleShare} disabled={sharing}>
